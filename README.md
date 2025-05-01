@@ -1,2 +1,1 @@
-# otus_linux_admin
-Repository for OTUS clasess Linux Administration
+Репозиторий лабораторных работ курса "Administrator.Linux.Profesional" в OTUS.ru
