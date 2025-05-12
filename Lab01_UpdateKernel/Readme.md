@@ -132,6 +132,24 @@ otus@otusadmin:~$ uname -r
 6.14.4-061404-generic
 ````
 
-Как видим, версия ядра соотвествует обновленной.
+Как видим, версия ядра соответствует обновленной.
 
 На этом установку нового ядра считаем завершенной.
+
+
+````
+otus@otusadmin:~$ sudo nano /etc/default/grub
+
+````
+
+````
+
+GRUB_DEFAULT=0
+GRUB_TIMEOUT_STYLE=hidden
+GRUB_TIMEOUT=0
+GRUB_DISTRIBUTOR=`( . /etc/os-release; echo ${NAME:-Ubuntu} ) 2>/dev/null || echo Ubuntu`
+GRUB_CMDLINE_LINUX_DEFAULT=""
+GRUB_CMDLINE_LINUX=""
+
+
+````
