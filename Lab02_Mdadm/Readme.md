@@ -74,7 +74,7 @@ I/O size (minimum/optimal): 512 bytes / 512 bytes
 ````
 Как видно, все диски добавлены в систему. 
 
-Добавленые диски для RAID массива:
+Добавленные диски для RAID массива:
 ````
 /dev/sdb
 /dev/sdc
@@ -84,7 +84,7 @@ I/O size (minimum/optimal): 512 bytes / 512 bytes
 
 #### 2. Собрать RAID-0/1/5/10 на выбор
 
-Приступаем к сборе RAID10 массива из 4х дисков:
+Приступаем к сборке RAID10 массива из 4х дисков:
 
 ````
 otus@otusadmin:~$ sudo mdadm --create --verbose /dev/md0 -l 10 -n 4 /dev/sd{b,c,d,e}
@@ -147,7 +147,7 @@ Consistency Policy : resync
 Как видими, RAID собрался и находится в состоянии "clean", т.е. в рабочем и все диски ОК.
 
 
-Создадим файловую систему на созданом RAID:
+Создадим файловую систему на RAID:
 
 ````
 otus@otusadmin:~$ sudo mkfs.ext4 /dev/md0
@@ -163,15 +163,14 @@ Creating journal (8192 blocks): done
 Writing superblocks and filesystem accounting information: done
 
 ````
-И смонитруем созданный RAID в каталог /mnt/01:
-
-
-Посмотрим результаты:
+И смонтируем созданный RAID в каталог /mnt/01:
 
 ````
 otus@otusadmin:~$ sudo mkdir /mnt/01
 otus@otusadmin:~$ sudo mount /dev/md0 /mnt/01
 ````
+
+Посмотрим результаты:
 
 ````
 otus@otusadmin:~$ df -h
@@ -186,13 +185,13 @@ tmpfs                              387M   12K  387M   1% /run/user/1000
 
 ````
 
-Видим, что есть созданный RAID, объемом в 2G (как и должно было получится для RAID 10 с 4мя дисками объемом в 1Gb каждый), который смонитрован в каталог
+Видим, что есть созданный RAID, объемом 2Gb (как и должно было получится для RAID 10 с 4мя дисками объемом 1Gb каждый), который смонитирован в каталог
 /mnt/01
 
 
 #### 3. Сломать и починить RAID
 
-Имитриуем сбой одоноги диска (2ой диск RAID 1 подмассива)
+Имитируем сбой одного диска (2ой диск RAID 1 подмассива)
 
 ````
 otus@otusadmin:~$ sudo mdadm /dev/md0 --fail /dev/sdc
@@ -296,13 +295,15 @@ mdadm: Cannot remove /dev/sdb from /dev/md0, array will be failed.
 Ожидаемо система не дает этого сделать, т.к. для данного RAID минимум 2 диска(по одному в каждом RAID1) должны быть в работе, иначе это приведет к краху RAID.
 
 
-Проведем также тест с удалением  одиного неисправный диска из RAID и последующи его добавлением:
+Проведем также тест с удалением одного неисправного диска из RAID и последующи его добавлением обратно в RAID:
 
 ````
 otus@otusadmin:~$ sudo mdadm /dev/md0 --fail /dev/sdc
 mdadm: set /dev/sdc faulty in /dev/md0
+
 otus@otusadmin:~$ sudo mdadm /dev/md0 --remove /dev/sdc
 mdadm: hot removed /dev/sdc from /dev/md0
+
 otus@otusadmin:~$ sudo mdadm /dev/md0 --add /dev/sdc
 mdadm: added /dev/sdc
 otus@otusadmin:~$ cat /proc/mdstat
@@ -314,12 +315,12 @@ md0 : active raid10 sdc[4] sde[5] sdd[2] sdb[0]
 unused devices: <none>
 
 ````
-как и ожидалось, после добавления диска, система выполняет копирование данных с остальных, находясь в состоянии "recovery"
+как и ожидалось, после добавления диска, система выполняет копирование данных с остальных, находясь какое-то время в состоянии "recovery"
 
 
 #### 4. Создать GPT таблицу, пять разделов и смонтировать их в системе
 
-Для начала отмонитруем RAID от каталога:
+Для начала отмонтируем существующий RAID от каталога:
 
 ````
 otus@otusadmin:~$ sudo unmount /dev/md0
@@ -331,7 +332,7 @@ otus@otusadmin:~$ sudo unmount /dev/md0
 sudo parted -s /dev/md0 mklabel gpt
 ````
 
-И партиции:
+И 5 партиций равного размера:
 
 ````
 otus@otusadmin:~$ parted /dev/md0 mkpart primary ext4 0% 20%
@@ -387,7 +388,7 @@ Writing superblocks and filesystem accounting information: done
 
 ````
 
-Создаем и монтируем к каталогам:
+Создаем и монтируем разделы к каталогам:
 
 ````
 otus@otusadmin:~$ sudo mkdir -p /mnt/part{1,2,3,4,5}
@@ -415,6 +416,6 @@ tmpfs                              387M   12K  387M   1% /run/user/1000
 /dev/md0p5                         366M   24K  338M   1% /mnt/part5
 ````
 
-Видим, что созданные разделы смонитрованы к соответсвующим каталогам.
+Видим, что созданные разделы смонтированы к соответствующим каталогам.
 
 
