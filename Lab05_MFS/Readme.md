@@ -15,7 +15,6 @@
 
 #### 1. Создание 2-ух виртуальных машины с сетевой связностью
 
-
 1-ая виртуальная машина(сервер MFS):
 
 ````
@@ -61,9 +60,15 @@ rtt min/avg/max/mdev = 0.221/0.599/0.812/0.252 ms
 
 #### 2. Настройка сервера NFS на первой машине
 
+
+Для поддержки работы NFS сервера устанавливаем соответствующий пакет:
+
 ````
 root@otusadmin:~# apt install nfs-kernel-server
 ````
+
+Проверяем установленные пакеты:
+
 ````
 root@otusadmin:~# dpkg -l | grep -i nfs
 ii  libnfsidmap1:amd64                         1:2.6.4-3ubuntu5.1                      amd64        NFS idmapping library
@@ -72,6 +77,7 @@ ii  nfs-kernel-server                          1:2.6.4-3ubuntu5.1               
 
 ````
 
+Проверяем настройки NFS сервера в /etc/nfs.conf:
 
 ````
 root@otusadmin:~# cat /etc/nfs.conf
@@ -98,10 +104,12 @@ root@otusadmin:~# cat /etc/nfs.conf
 
 ````
 
-TCP всех версий, UDP неактивен по соображениям стабильности работы по протколу UDP в новых версиях сборки Ubuntu(хотя он работает быстрее и меньше нагружает ядро системы).
+Видим, что по дефолту в конфигурации активен только TCP, а UDP неактивен. По соображениям стабильности работы NFS в новых версиях сборки Ubuntu протокол UDP не используется (хотя вообщем он работает быстрее и меньше нагружает ядро системы). Версии NFS поддерживается как v3, так и более современные v4.x (vers)
 
+#### Проверка работы служб.
 
 Выводим список используемых портов RPC(Remote procedure call):
+
 ````
 root@otusadmin:~# rpcinfo -p
    program vers proto   port  service
@@ -133,7 +141,7 @@ root@otusadmin:~# rpcinfo -p
 
 Видим, что используется порт 2049 непосредственно NFS, а также 111 для portmapper.
 
-Проверяем, что порты слушаются. Файрвол пока не не настроен - подразумеваем, что все порты будут доступны.
+Проверяем, что указанные порты слушаются. Файрвол пока не настроен (в дефолтном ACCEPT) - подразумеваем, что все порты будут доступны извне.
 
 ````
 root@otusadmin:~# ss -tnplu
@@ -147,7 +155,7 @@ tcp     LISTEN   0        64                          [::]:2049              [::
 ````
 
 
-Далее создадим директорию с соответствующими настройкам для использования ее как share папки:
+Далее создадим директорию с соответствующими настройкам(пользователь/группа) для использования ее как share папки на сервере:
 
 ````
 root@otusadmin:~# mkdir -p /srv/share/upload
@@ -163,7 +171,7 @@ root@otusadmin:~# chmod 0777 /srv/share/upload
 ````
 
 
-Cоздаём в файле /etc/exports структуру, которая позволит экспортировать ранее созданную директорию:
+Cоздаём в файле /etc/exports(который отвечает, что и кому будем шарить) структуру, которая позволит экспортировать созданную директорию /srv/share/:
 
 
 ````
@@ -172,11 +180,13 @@ root@otusadmin:~# cat << EOF > /etc/exports
 > EOF
 ````
 
+Строка добавлена в файл: 
 ````
 root@otusadmin:~# cat /etc/exports
 /srv/share 192.168.153.138/32(rw,sync,root_squash)
 ````
 
+Делаем экспорт директории и проверяем: 
 ```
 root@otusadmin:~# exportfs -r
 exportfs: /etc/exports [1]: Neither 'subtree_check' or 'no_subtree_check' specified for export "192.168.153.138/32:/srv/share".
@@ -188,13 +198,18 @@ root@otusadmin:~# exportfs -s
 
 ````
 
+На этом нстройка сервера завершена.
+
 #### 3. Настройка клиента NFS на второй машине
 
+Для поддержки работы NFS клиента устанавливаем соответствующий пакет:
 
 ````
 root@otus2:~# apt install nfs-common
 
 ````
+
+Проверяем установленные пакеты:
 
 ````
 root@otus2:~# dpkg -l | grep -i nfs
@@ -203,7 +218,7 @@ ii  nfs-common                            1:1.3.4-2.5ubuntu3.7              amd6
 
 ````
 
-
+Пробуем подмонтировать директорию с сервера:
 
 ````
 root@otus2:~# mount 192.168.153.138:/srv/share/ /mnt/
@@ -211,6 +226,9 @@ mount.nfs: access denied by server while mounting 192.168.153.138:/srv/share/
 
 ````
 
+Видим, что монитрование не происходит. Сервер отказывает в монтировании директории.
+
+Настраиваем логирование на сервере и смотрим логи:
 
 ````
 root@otusadmin:~# journalctl -u nfs-mountd
@@ -222,8 +240,17 @@ May 25 18:03:03 otusadmin rpc.mountd[3835]: refused mount request from 192.168.1
 May 25 18:03:38 otusadmin rpc.mountd[3835]: refused mount request from 192.168.153.142 for /srv/share (/srv/share): unmatched host
 May 25 18:03:59 otusadmin rpc.mountd[3835]: refused mount request from 192.168.153.142 for /srv/share (/srv/share): unmatched host
 May 25 18:03:59 otusadmin rpc.mountd[3835]: refused mount request from 192.168.153.142 for /srv/share (/srv/share): unmatched host
+````
+Видим, что сообщение говорит о том, что подключение отбрасывается из-за того, что хост не матчится с разрешенными на сервере.
+
+При настройке сервера была допущена ошибка и указан только адрес сервера, а не клиента :)
+
+Исправляем это, и укажем всю подсеть 192.168.153.0/24 в /etc/exports. Теперь любой из хостов данной подсети имеет возможность подключиться к серверу. 
 
 ````
+/srv/share 192.168.153.0/24(rw,sync,root_squash)
+````
+После этого монитрование директории проходит успешно на клиенте:
 
 ````
 root@otus2:~# mount | grep mnt
@@ -233,24 +260,28 @@ systemd-1 on /mnt type autofs (rw,relatime,fd=51,pgrp=1,timeout=0,minproto=5,max
 ````
 
 
+Добавляем в /etc/fstab:
+
 ````
 root@otus2:~# echo "192.168.153.138:/srv/share /mnt nfs vers=3,noauto,x-systemd.automount 0 0" >> /etc/fstab
 root@otus2:~# systemctl daemon-reload
 root@otus2:~# systemctl restart remote-fs.target
 ````
-
+Теперь при каждом первом обращении к /mnt будет происходить автоматическое монитрование. 
 
 #### 4. Проверка работоспобности
 
+##### 1. Создать файл на сервере, проверить его доступность на клиенте. Создать файл на стороне клиента:
 
-Сервер:
+* Создаем на сервере файл test_file в расшаренной директории:
 
 ````
 root@otusadmin:~# cd /srv/share/upload
 root@otusadmin:/srv/share/upload# touch test_file
 ````
 
-Клиент:
+ * Проверяем  доступность этого файла на клиенте:
+
 ````
 root@otus2:~# cd /mnt/upload
 root@otus2:/mnt/upload# ls -l
@@ -258,14 +289,17 @@ total 0
 -rw-r--r-- 1 root root 0 May 25 18:29 test_file
 ````
 
+* Видим, что файл test_file доступен на клиенте.
 
-Клиент:
+
+
+* Создаем файл со стороны клиента в директории:
 
 ````
 root@otus2:/mnt/upload# touch client_test
 ````
 
-Сервер:
+* проверяем наличие файлов на сервере:
 
 ````
 root@otusadmin:/srv/share/upload# ls -l
@@ -273,17 +307,18 @@ total 0
 -rw-r--r-- 1 nobody nogroup 0 May 25 18:32 client_test
 -rw-r--r-- 1 root   root    0 May 25 18:29 test_file
 
-```
+````
 
+##### 2. Проверка работы после перезагрузки клиента/сервера:
 
-Перезапускаем клиент и проверяем, что доступ к директории NFS есть и ранее созданные файлы на месте:
+* Перезапускаем клиент и проверяем, что доступ к директории NFS есть и ранее созданные файлы на месте:
 
 ````
 otus@otus2:~$ reboot
 
 The system will reboot now!
-
 ````
+* Проверяем доступность файлов после перезагрузки на клиенте:
 
 ````
 otus@otus2:~$ ls -l /mnt/upload
@@ -293,24 +328,30 @@ total 0
 ````
 
 
-Перезапускаем сервер:
+* Перезапускаем сервер:
+
 ````
 otus@otusadmin:~$ reboot
 
 The system will reboot now!
 ````
+* Проверяем доступность файлов после перезагрузки на сервере:
+
 ````
 otus@otusadmin:~$ ls -l /srv/share/upload
 total 0
 -rw-r--r-- 1 nobody nogroup 0 May 25 18:32 client_test
 -rw-r--r-- 1 root   root    0 May 25 18:29 test_file
-```
+````
 
+
+* Проверяем состояние экспорта на сервере:
 ````
 root@otusadmin:~# exportfs -s
 /srv/share  192.168.153.0/24(sync,wdelay,hide,no_subtree_check,sec=sys,rw,secure,root_squash,no_all_squash)
 
 ````
+* и монтирования на сервере:
 
 ````
 root@otusadmin:~# showmount -a 192.168.153.138
@@ -319,15 +360,18 @@ All mount points on 192.168.153.138:
 
 ````
 
+3. Финальный тест.
 
+* Перезагружаем клиент еще раз.
 
-Клиент:
+* Проверяем монитрование на клиенте:
 
 `````
 otus@otus2:~$ showmount -a 192.168.153.138
 All mount points on 192.168.153.138:
 192.168.153.142:/srv/share
 `````
+
 
 ````
 otus@otus2:~$ cd /mnt/upload
@@ -338,10 +382,13 @@ total 0
 
 ````
 
+* Создаем еще один файл на стороне клиента:
 
 ````
 otus@otus2:/mnt/upload$ touch client_final_check
 ````
+
+* Проверяем, что на стороне сервера файл доступен:
 
 ````
 root@otusadmin:~# ls -l /srv/share/upload/
@@ -351,6 +398,7 @@ total 0
 -rw-r--r-- 1 root   root    0 May 25 18:29 test_file
 ````
 
+Таки образом, проверки прошли успешно и работа расшаренной директории между сервером и клиентом обеспечена.
 
 
 
