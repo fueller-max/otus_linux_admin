@@ -15,7 +15,7 @@
 ### Решение:
 
 
-1. Включить отображение меню Grub.
+#### 1. Включить отображение меню Grub.
 
 Для включения возможности отображения меню загрузчика GRUB необходимо отредактировать файл /etc/default/grub:
 
@@ -33,38 +33,38 @@ root@otusadmin:~# nano /etc/default/grub
 GRUB_TIMEOUT=10
 ````
 
-Обновляем кофигурацию загрузчика и перезапускаем систему:
+Обновляем конфигурацию загрузчика и перезапускаем систему:
 
 ````
 root@otusadmin:~# update-grub
 root@otusadmin:~# reboot
 ````
 
-Во время загрузки видим отображанение загрузочного меню GRUB:
+Во время загрузки видим отображение загрузочного меню GRUB:
 
 ![](/Lab07_GRUB/pic/GRUB_menu.jpg)
 
-2. Попасть в систему без пароля несколькими способами.
+#### 2. Попасть в систему без пароля несколькими способами.
 
 * 1-ый способ. В меню загрузчика GRUB нажимаем 'e' и попадаем в окно с кодом загрузчика:
 
 ![](/Lab07_GRUB/pic/GRUB_params_e.jpg)
 
-в строке, начинающейся с "linux" (или "kenrnel") добавялем строку запуска командой строки init=/bin/bash:
+в строке, начинающейся с "linux" (или "kernel") добавляем строку запуска командой строки init=/bin/bash:
 
 ![](/Lab07_GRUB/pic/GRUB_bin_bash.jpg)
 
-После этого, система загружается под root:
+После этого продолжаем загрузку и система загружается под root`ом:
 
 ![](/Lab07_GRUB/pic/Root_access.jpg)
 
-На данном этапе система запущена в режиме ro и изменить файлы не получится.
+Следует учитывать, что на данном этапе система запущена в режиме файловой системы read only и изменить файлы не получится.
 
-Делаем монитрование с режими rw:
+Cделаем монитрование FS с режимом rw:
 
 ![](/Lab07_GRUB/pic/remount_rw.jpg)
 
-После чего, можно, например, записать и прочитать файл в системе: 
+После чего можно, например, свободно записать и прочитать файл в системе: 
 
 ![](/Lab07_GRUB/pic/write_file_test.jpg)
 
@@ -78,7 +78,7 @@ root@otusadmin:~# reboot
 
 ![](/Lab07_GRUB/pic/GRUB_Recovery.jpg)
 
-Первое выбираем опцию "network", чтобы система в т.ч. смонтировала файловую систему в режиме rw: 
+Первое, выбираем опцию "network", чтобы система смонтировала файловую систему в режиме rw: 
 
 ![](/Lab07_GRUB/pic/GRUB_recovery_network.jpg)
 
@@ -93,7 +93,7 @@ root@otusadmin:~# reboot
 ![](/Lab07_GRUB/pic/GRUB_recovery_root_entered.jpg)
 
 
-3. Установить систему с LVM, после чего переименовать VG.
+#### 3. Установить систему с LVM, после чего переименовать VG.
 
 Выводим текущее состояние Volume Group:
 
@@ -113,7 +113,7 @@ root@otusadmin:~# vgrename ubuntu-vg ubuntu-otus
 
 ````
 
-В методическом пособии предлагается внеси изменения в файл /boot/grub/grub.cfg:
+В методическом пособии предлагается внести изменения в файл /boot/grub/grub.cfg:
 
 ````
 root@otusadmin:~# nano /boot/grub/grub.cfg
@@ -128,7 +128,7 @@ root@otusadmin:~# nano /boot/grub/grub.cfg
 # from /etc/grub.d and settings from /etc/default/grub
 ````
 
-Исследование вопроса(https://askubuntu.com/questions/765058/how-do-you-rename-the-volume-group-that-contains-the-root-volume-in-lvm) привело к выводу, что данное сообщение можно проигнорировать и внести вручную изменения в местах использования Volume Group:
+Исследование вопроса(https://askubuntu.com/questions/765058/how-do-you-rename-the-volume-group-that-contains-the-root-volume-in-lvm) привело к выводу, что данное сообщение можно в данном случае проигнорировать и внести вручную изменения в данном файле в местах использования Volume Group:
 
 ````
 menuentry 'Ubuntu' --class ubuntu --class gnu-linux --class gnu --class os $menuentry_id_option 'gnulinux-simple-7c2fe546-ec79-4ffa-93dd-338277c68c66'>
@@ -149,12 +149,12 @@ menuentry 'Ubuntu' --class ubuntu --class gnu-linux --class gnu --class os $menu
         initrd  /initrd.img-6.14.4-061404-generic
 ````
 
-Делаем для всех пунктов. 
+Делаем для всех мест использования... 
 
-Характерно, что сейчас выполнение команды 'update-grub' невозможно, т.к. система ругается на невозможность найти пути к старому VG. 
+Характерно, что сейчас (сразу после редактирования /boot/grub/grub.cfg) выполнение команды 'update-grub' невозможно - система ругается на невозможность найти пути к старому VG. 
 
 
-Также проверим файл /etc/fstab и смотрим настройки относительно Volume group:
+Также перед перезагрузкой проверим файл /etc/fstab на предмет настроек относительно Volume Groups:
 ````
 # /etc/fstab: static file system information.
 #
@@ -171,7 +171,7 @@ menuentry 'Ubuntu' --class ubuntu --class gnu-linux --class gnu --class os $menu
 
 ````
 
-Тут видно, что ссылка LVM использует UUID идентификатор, которые не зависят от имени VG.
+Тут видно, что монитрование LVM использует UUID идентификатор, которые не зависят от имени VG.
 
 
 Далее перезагружаем систему, система загружается и после перезагрузки команда 'update-grub' срабатывает штатно:
