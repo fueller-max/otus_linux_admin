@@ -30,53 +30,12 @@ otus@otusadmin:~/scripts$ touch web_serv_analytic.sh
 ````
 chmod +x web_serv_analytic.sh
 ````
-
-* Список IP адресов (с наибольшим кол-вом запросов):
-
-````
-ip_addresses=$(echo "$log_data_content" | awk '{print $1}' | sort | uniq -c | sort -n | tail -n 10)
-````
-
-* Список запрашиваемых URL (с наибольшим кол-вом запросов):
-
-````
-url_regex='(http|https):\/\/([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/[^")]*)' 
-
-urls=$(echo "$log_data_content" | grep -Eo "$url_regex" | sort | uniq -c | sort -n | tail -n 10)
-````
-
-* Ошибки веб-сервера/приложения:
-
-````
-error_regex='(error|warn|crit|alert|emerg)'
-
-errors=$(echo "$log_data_content" | grep -Eo "error_regex" )
-````
-
-* Список всех кодов HTTP ответа с указанием их кол-ва
-
-````
-http_resp_regex='(HTTP/[0-9].[0-9]" [0-9]{3})'
-
-http_responses=$(echo "$log_data_content" | grep -Eo  "$http_resp_regex" | sort | uniq -c | sort -n | tail -n 10)
-````
-
-* Скрипт должен предотвращать одновременный запуск нескольких копий, до его завершения
-
-````
-lockfile="/tmp/web_serv_analytic.lock"
-
-if ! mkdir "$lockfile" 2>/dev/null; then
-    echo "Another instance is still running..."
-    exit 1
-fi
-
-#######################
-
-rm -rf "$lockfile"
-````
-
-* Реализация механизма чтения новых данных с момента последнего вызова
+ * Реализация механизма чтения новых данных с момента последнего вызова. 
+ Для чтения данных из лог файла будем использовать следующий алогритм:
+  -считать кол-во строк в лог файле. 
+  -прочитать строки от последнего в момент предыдущего чтения(номер сохраняется  между вызовами скрипта) и актуальным
+  -сохранить порцию данных в отдельном временном файле для дальнейшей обработки 
+  -после обработки удалть временный файл, обновить номер строки для следующего вызова скрипта
 
 ````
 new_data_provided=0
@@ -104,6 +63,64 @@ fi
 #update the number of lines
 echo "$num_read_lines" > "$prev_numb_of_lines"
 ````
+
+После того, как прочитана порция новых данных и записана в временный файл(temp_data_file) приступаем к непосредственно к обработке:
+
+
+* Список IP адресов (с наибольшим кол-вом запросов):
+ (тут просто выводим первый столбец с сортировкой и подсчетом)
+
+````
+ip_addresses=$(echo "$log_data_content" | awk '{print $1}' | sort | uniq -c | sort -n | tail -n 10)
+````
+
+* Список запрашиваемых URL (с наибольшим кол-вом запросов):
+
+(для вычленения URL необходимо использование соответсвующего рег.выражения)
+````
+url_regex='(http|https):\/\/([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/[^")]*)' 
+
+urls=$(echo "$log_data_content" | grep -Eo "$url_regex" | sort | uniq -c | sort -n | tail -n 10)
+````
+
+* Ошибки веб-сервера/приложения:
+
+(для вычленения ошибок также используем рег.выражение)
+
+````
+error_regex='(error|warn|crit|alert|emerg)'
+
+errors=$(echo "$log_data_content" | grep -Eo "error_regex" )
+````
+
+* Список всех кодов HTTP ответа с указанием их кол-ва
+
+````
+http_resp_regex='(HTTP/[0-9].[0-9]" [0-9]{3})'
+
+http_responses=$(echo "$log_data_content" | grep -Eo  "$http_resp_regex" | sort | uniq -c | sort -n | tail -n 10)
+````
+
+
+
+* Скрипт должен предотвращать одновременный запуск нескольких копий, до его завершения
+
+Реализуем механизм блокировки путем создания временного файла в момент запуска и его удаления в момент окончания работы скрипта. Наличие файла в момент запуска скрипта говорит о том, что скрипт уже запущен. Недостаток решения - в случае, если скрипт "упадет", то файл не будет удален и последующий запуск будет невозможен до удаления lock-файла.
+
+````
+lockfile="/tmp/web_serv_analytic.lock"
+
+if ! mkdir "$lockfile" 2>/dev/null; then
+    echo "Another instance is still running..."
+    exit 1
+fi
+
+#######################
+
+rm -rf "$lockfile"
+````
+
+* Далее обрабатываем данные, собирая их в одну строку, пишем в файл с датой (использовалось для отладки), а также отправляем E-mail. Отправка почты реализована исключительно на базовом уровне в рамках localhost и одного пользователя.
 
 * Обработка данных, запись в файл и отправка Email
 
@@ -149,6 +166,8 @@ fi
 
 #### Запуск скрипта переодически 
 
+* Для запуска скрипта переодчиески используем cron, куда вписываем запуск скрипта каждый час в 00 минут:
+
 ````
 otus@otus2:~/scripts$ crontab -l
 # Edit this file to introduce tasks to be run by cron.
@@ -158,11 +177,13 @@ otus@otus2:~/scripts$ crontab -l
 
 ````
 
+Видим результат работы вызова скритпа из cron в 17:00 и 18:00
+
 
 
 ````
 otus@otus2:~/scripts$ mail
-"/var/mail/otus": 9 messages 9 new
+"/var/mail/otus": 11 messages 11 new
 >N   1 otus               Fri Jun 13 14:02  13/416   test
  N   2 otus               Fri Jun 13 14:03  13/416   test
  N   3 otus               Fri Jun 13 14:03  13/416   test
@@ -172,9 +193,12 @@ otus@otus2:~/scripts$ mail
  N   7 Cron Daemon        Fri Jun 13 16:00  23/935   Cron <otus@otus2> ~/scripts/web_serv_analytic.sh access.log
  N   8 otus               Fri Jun 13 17:00  46/1688  Web server log report
  N   9 Cron Daemon        Fri Jun 13 17:00  22/858   Cron <otus@otus2> ~/scripts/web_serv_analytic.sh  ~/scripts/access.log
+ N  10 otus               Fri Jun 13 18:00  13/486   Web server log report
+ N  11 Cron Daemon        Fri Jun 13 18:00  22/858   Cron <otus@otus2> ~/scripts/web_serv_analytic.sh  ~/scripts/access.log
 
 ````
 
+В 17:00 был получен лог с данными
 
 ````
 
@@ -225,7 +249,6 @@ HTTP responses:
 ````
 
 ````
-? 9
 Return-Path: <otus@localhost.localdomain>
 X-Original-To: otus
 Delivered-To: otus@localhost.localdomain
@@ -249,6 +272,8 @@ Starting web server access log file analyzer script...
 Web server access log file analyzer script has finished it`s job. All data has been sent. HAVE A NICE DAY!
 
 ````
+
+В 18:00 был также получен лог с данными. Поскольку новых данных в лог файле не появилось, то скрипт сообщает о том, что новых данных нет: 
 
 ````
 otus@otus2:~/scripts$ mail
@@ -283,5 +308,7 @@ From: otus <otus@localhost>
   No no data has been provided since the last script call
 
 ````
+
+Таким образом, базовый функционал работы скрипта реализован.
 
 
