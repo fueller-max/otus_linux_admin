@@ -336,3 +336,472 @@ remote: Total 32 (delta 9), reused 29 (delta 9), pack-reused 0 (from 0)
 Receiving objects: 100% (32/32), 7.23 KiB | 2.41 MiB/s, done.
 Resolving deltas: 100% (9/9), done.
 ```
+
+````
+ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant up
+==> vagrant: A new version of Vagrant is available: 2.4.7 (installed version: 2.4.1)!
+==> vagrant: To upgrade visit: https://www.vagrantup.com/downloads.html
+
+Bringing machine 'ns01' up with 'virtualbox' provider...
+Bringing machine 'client' up with 'virtualbox' provider...
+==> ns01: Importing base box 'almalinux/9'...
+==> ns01: Matching MAC address for NAT networking...
+==> ns01: Checking if box 'almalinux/9' version '9.4.20240805' is up to date...
+==> ns01: Setting the name of the VM: vagrant_selinux_dns_problems_ns01_1752344002704_15603
+==> ns01: Clearing any previously set network interfaces...
+==> ns01: Preparing network interfaces based on configuration...
+    ns01: Adapter 1: nat
+    ns01: Adapter 2: intnet
+==> ns01: Forwarding ports...
+    ns01: 22 (guest) => 2222 (host) (adapter 1)
+==> ns01: Running 'pre-boot' VM customizations...
+==> ns01: Booting VM...
+==> ns01: Waiting for machine to boot. This may take a few minutes...
+    ns01: SSH address: 127.0.0.1:2222
+    ns01: SSH username: vagrant
+    ns01: SSH auth method: private key
+    ns01:
+    ns01: Vagrant insecure key detected. Vagrant will automatically replace
+    ns01: this with a newly generated keypair for better security.
+    ns01:
+    ns01: Inserting generated public key within guest...
+    ns01: Removing insecure key from the guest if it's present...
+    ns01: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> ns01: Machine booted and ready!
+==> ns01: Checking for guest additions in VM...
+==> ns01: Setting hostname...
+==> ns01: Configuring and enabling network interfaces...
+==> ns01: Running provisioner: ansible...
+Vagrant gathered an unknown Ansible version:
+
+
+and falls back on the compatibility mode '1.8'.
+
+Alternatively, the compatibility mode can be specified in your Vagrantfile:
+https://www.vagrantup.com/docs/provisioning/ansible_common.html#compatibility_mode
+
+    ns01: Running ansible-playbook...
+
+PLAY [all] *********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [ns01]
+
+TASK [install packages] ********************************************************
+changed: [ns01]
+
+PLAY [ns01] ********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [ns01]
+
+TASK [copy named.conf] *********************************************************
+changed: [ns01]
+
+TASK [copy master zone dns.lab] ************************************************
+changed: [ns01] => (item=/home/ansible/vagrant_selinux_dns_problems/provisioning/files/ns01/named.dns.lab)
+changed: [ns01] => (item=/home/ansible/vagrant_selinux_dns_problems/provisioning/files/ns01/named.dns.lab.view1)
+
+TASK [copy dynamic zone ddns.lab] **********************************************
+changed: [ns01]
+
+TASK [copy dynamic zone ddns.lab.view1] ****************************************
+changed: [ns01]
+
+TASK [copy master zone newdns.lab] *********************************************
+changed: [ns01]
+
+TASK [copy rev zones] **********************************************************
+changed: [ns01]
+
+TASK [copy resolv.conf to server] **********************************************
+changed: [ns01]
+
+TASK [copy transferkey to server] **********************************************
+changed: [ns01]
+
+TASK [set /etc/named permissions] **********************************************
+changed: [ns01]
+
+TASK [set /etc/named/dynamic permissions] **************************************
+changed: [ns01]
+
+TASK [ensure named is running and enabled] *************************************
+changed: [ns01]
+[WARNING]: Could not match supplied host pattern, ignoring: client
+
+PLAY [client] ******************************************************************
+skipping: no hosts matched
+
+PLAY RECAP *********************************************************************
+ns01                       : ok=14   changed=12   unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+==> client: Importing base box 'almalinux/9'...
+==> client: Matching MAC address for NAT networking...
+==> client: Checking if box 'almalinux/9' version '9.4.20240805' is up to date...
+==> client: Setting the name of the VM: vagrant_selinux_dns_problems_client_1752344153646_49802
+==> client: Fixed port collision for 22 => 2222. Now on port 2200.
+==> client: Clearing any previously set network interfaces...
+==> client: Preparing network interfaces based on configuration...
+    client: Adapter 1: nat
+    client: Adapter 2: intnet
+==> client: Forwarding ports...
+    client: 22 (guest) => 2200 (host) (adapter 1)
+==> client: Running 'pre-boot' VM customizations...
+==> client: Booting VM...
+==> client: Waiting for machine to boot. This may take a few minutes...
+    client: SSH address: 127.0.0.1:2200
+    client: SSH username: vagrant
+    client: SSH auth method: private key
+    client:
+    client: Vagrant insecure key detected. Vagrant will automatically replace
+    client: this with a newly generated keypair for better security.
+    client:
+    client: Inserting generated public key within guest...
+    client: Removing insecure key from the guest if it's present...
+    client: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> client: Machine booted and ready!
+==> client: Checking for guest additions in VM...
+==> client: Setting hostname...
+==> client: Configuring and enabling network interfaces...
+==> client: Running provisioner: ansible...
+Vagrant gathered an unknown Ansible version:
+
+
+and falls back on the compatibility mode '1.8'.
+
+Alternatively, the compatibility mode can be specified in your Vagrantfile:
+https://www.vagrantup.com/docs/provisioning/ansible_common.html#compatibility_mode
+
+    client: Running ansible-playbook...
+
+PLAY [all] *********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [client]
+
+TASK [install packages] ********************************************************
+changed: [client]
+
+PLAY [ns01] ********************************************************************
+skipping: no hosts matched
+
+PLAY [client] ******************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [client]
+
+TASK [copy resolv.conf to the client] ******************************************
+changed: [client]
+
+TASK [copy rndc conf file] *****************************************************
+changed: [client]
+
+TASK [copy motd to the client] *************************************************
+changed: [client]
+
+TASK [copy transferkey to client] **********************************************
+changed: [client]
+
+PLAY RECAP *********************************************************************
+client                     : ok=7    changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+````
+
+````
+ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant status
+Current machine states:
+
+ns01                      running (virtualbox)
+client                    running (virtualbox)
+
+This environment represents multiple VMs. The VMs are all listed
+above with their current state. For more information about a specific
+VM, run `vagrant status NAME`.
+````
+
+````
+ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant ssh client
+###############################
+### Welcome to the DNS lab! ###
+###############################
+
+- Use this client to test the enviroment
+- with dig or nslookup. Ex:
+    dig @192.168.50.10 ns01.dns.lab
+
+- nsupdate is available in the ddns.lab zone. Ex:
+    nsupdate -k /etc/named.zonetransfer.key
+    server 192.168.50.10
+    zone ddns.lab
+    update add www.ddns.lab. 60 A 192.168.50.15
+    send
+
+- rndc is also available to manage the servers
+    rndc -c ~/rndc.conf reload
+
+###############################
+### Enjoy! ####################
+###############################
+Last login: Sat Jul 12 18:17:34 2025 from 10.0.2.2
+````
+
+```
+[vagrant@client ~]$ nsupdate -k /etc/named.zonetransfer.key
+> server 192.168.50.10
+> zone ddns.lab
+> update add www.ddns.lab. 60 A 192.168.50.15
+> send
+update failed: SERVFAIL
+> quit
+[vagrant@client ~]$
+
+````
+
+````
+ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant ssh ns01
+Last login: Sat Jul 12 18:14:54 2025 from 10.0.2.2
+[vagrant@ns01 ~]$
+[vagrant@ns01 ~]$
+[vagrant@ns01 ~]$ cat /var/log/audit/audit.log | audit2why
+cat: /var/log/audit/audit.log: Permission denied
+Nothing to do
+[vagrant@ns01 ~]$ sudo -i
+[root@ns01 ~]# cat /var/log/audit/audit.log | audit2why
+type=AVC msg=audit(1752344045.646:682): avc:  denied  { dac_read_search } for  pid=3338 comm="20-chrony-dhcp" capability=2  scontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tcontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tclass=capability permissive=0
+
+        Was caused by:
+                Missing type enforcement (TE) allow rule.
+
+                You can use audit2allow to generate a loadable module to allow this access.
+
+type=AVC msg=audit(1752344045.646:682): avc:  denied  { dac_override } for  pid=3338 comm="20-chrony-dhcp" capability=1  scontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tcontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tclass=capability permissive=0
+
+        Was caused by:
+                Missing type enforcement (TE) allow rule.
+
+                You can use audit2allow to generate a loadable module to allow this access.
+
+type=AVC msg=audit(1752344046.043:695): avc:  denied  { dac_read_search } for  pid=3395 comm="20-chrony-dhcp" capability=2  scontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tcontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tclass=capability permissive=0
+
+        Was caused by:
+                Missing type enforcement (TE) allow rule.
+
+                You can use audit2allow to generate a loadable module to allow this access.
+
+type=AVC msg=audit(1752344046.043:695): avc:  denied  { dac_override } for  pid=3395 comm="20-chrony-dhcp" capability=1  scontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tcontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tclass=capability permissive=0
+
+        Was caused by:
+                Missing type enforcement (TE) allow rule.
+
+                You can use audit2allow to generate a loadable module to allow this access.
+
+type=AVC msg=audit(1752344549.813:1767): avc:  denied  { write } for  pid=9633 comm="isc-net-0000" name="dynamic" dev="sda4" ino=34030135 scontext=system_u:system_r:named_t:s0 tcontext=unconfined_u:object_r:named_conf_t:s0 tclass=dir permissive=0
+
+        Was caused by:
+                Missing type enforcement (TE) allow rule.
+
+                You can use audit2allow to generate a loadable module to allow this access.
+
+[root@ns01 ~]#
+
+````
+
+````
+[root@ns01 ~]# ls -alZ /var/named/named.localhost
+-rw-r-----. 1 root named system_u:object_r:named_zone_t:s0 152 Jun 24 13:47 /var/named/named.localhost
+
+````
+
+
+````
+[root@ns01 ~]# ls -laZ /etc/named
+total 28
+drw-rwx---.  3 root named system_u:object_r:named_conf_t:s0      121 Jul 12 18:14 .
+drwxr-xr-x. 85 root root  system_u:object_r:etc_t:s0            8192 Jul 12 18:14 ..
+drw-rwx---.  2 root named unconfined_u:object_r:named_conf_t:s0   56 Jul 12 18:14 dynamic
+-rw-rw----.  1 root named system_u:object_r:named_conf_t:s0      784 Jul 12 18:14 named.50.168.192.rev
+-rw-rw----.  1 root named system_u:object_r:named_conf_t:s0      610 Jul 12 18:14 named.dns.lab
+-rw-rw----.  1 root named system_u:object_r:named_conf_t:s0      609 Jul 12 18:14 named.dns.lab.view1
+-rw-rw----.  1 root named system_u:object_r:named_conf_t:s0      657 Jul 12 18:14 named.newdns.lab
+
+````
+
+````
+[root@ns01 ~]# sudo semanage fcontext -l | grep named
+/dev/gpmdata                                       named pipe         system_u:object_r:gpmctl_t:s0
+/dev/initctl                                       named pipe         system_u:object_r:initctl_t:s0
+/dev/xconsole                                      named pipe         system_u:object_r:xconsole_device_t:s0
+/dev/xen/tapctrl.*                                 named pipe         system_u:object_r:xenctl_t:s0
+/etc/named(/.*)?                                   all files          system_u:object_r:named_conf_t:s0
+/etc/named\.caching-nameserver\.conf               regular file       system_u:object_r:named_conf_t:s0
+/etc/named\.conf                                   regular file       system_u:object_r:named_conf_t:s0
+/etc/named\.rfc1912.zones                          regular file       system_u:object_r:named_conf_t:s0
+/etc/named\.root\.hints                            regular file       system_u:object_r:named_conf_t:s0
+/etc/rc\.d/init\.d/named                           regular file       system_u:object_r:named_initrc_exec_t:s0
+/etc/rc\.d/init\.d/named-sdb                       regular file       system_u:object_r:named_initrc_exec_t:s0
+/etc/rc\.d/init\.d/unbound                         regular file       system_u:object_r:named_initrc_exec_t:s0
+/etc/rndc.*                                        regular file       system_u:object_r:named_conf_t:s0
+/etc/unbound(/.*)?                                 all files          system_u:object_r:named_conf_t:s0
+/usr/lib/systemd/system/named-sdb.*                regular file       system_u:object_r:named_unit_file_t:s0
+/usr/lib/systemd/system/named.*                    regular file       system_u:object_r:named_unit_file_t:s0
+/usr/lib/systemd/system/unbound.*                  regular file       system_u:object_r:named_unit_file_t:s0
+/usr/lib/systemd/systemd-hostnamed                 regular file       system_u:object_r:systemd_hostnamed_exec_t:s0
+/usr/sbin/lwresd                                   regular file       system_u:object_r:named_exec_t:s0
+/usr/sbin/named                                    regular file       system_u:object_r:named_exec_t:s0
+/usr/sbin/named-checkconf                          regular file       system_u:object_r:named_checkconf_exec_t:s0
+/usr/sbin/named-pkcs11                             regular file       system_u:object_r:named_exec_t:s0
+/usr/sbin/named-sdb                                regular file       system_u:object_r:named_exec_t:s0
+/usr/sbin/unbound                                  regular file       system_u:object_r:named_exec_t:s0
+/usr/sbin/unbound-anchor                           regular file       system_u:object_r:named_exec_t:s0
+/usr/sbin/unbound-checkconf                        regular file       system_u:object_r:named_exec_t:s0
+/usr/sbin/unbound-control                          regular file       system_u:object_r:named_exec_t:s0
+/usr/share/munin/plugins/named                     regular file       system_u:object_r:services_munin_plugin_exec_t:s0
+/var/lib/softhsm(/.*)?                             all files          system_u:object_r:named_cache_t:s0
+/var/lib/unbound(/.*)?                             all files          system_u:object_r:named_cache_t:s0
+/var/log/named.*                                   regular file       system_u:object_r:named_log_t:s0
+/var/named(/.*)?                                   all files          system_u:object_r:named_zone_t:s0
+/var/named/chroot(/.*)?                            all files          system_u:object_r:named_conf_t:s0
+/var/named/chroot/dev                              directory          system_u:object_r:device_t:s0
+/var/named/chroot/dev/log                          socket             system_u:object_r:devlog_t:s0
+/var/named/chroot/dev/null                         character device   system_u:object_r:null_device_t:s0
+/var/named/chroot/dev/random                       character device   system_u:object_r:random_device_t:s0
+/var/named/chroot/dev/urandom                      character device   system_u:object_r:urandom_device_t:s0
+/var/named/chroot/dev/zero                         character device   system_u:object_r:zero_device_t:s0
+/var/named/chroot/etc(/.*)?                        all files          system_u:object_r:etc_t:s0
+/var/named/chroot/etc/localtime                    regular file       system_u:object_r:locale_t:s0
+/var/named/chroot/etc/named\.caching-nameserver\.conf regular file       system_u:object_r:named_conf_t:s0
+/var/named/chroot/etc/named\.conf                  regular file       system_u:object_r:named_conf_t:s0
+/var/named/chroot/etc/named\.rfc1912.zones         regular file       system_u:object_r:named_conf_t:s0
+/var/named/chroot/etc/named\.root\.hints           regular file       system_u:object_r:named_conf_t:s0
+/var/named/chroot/etc/pki(/.*)?                    all files          system_u:object_r:cert_t:s0
+/var/named/chroot/etc/rndc\.key                    regular file       system_u:object_r:dnssec_t:s0
+/var/named/chroot/lib(/.*)?                        all files          system_u:object_r:lib_t:s0
+/var/named/chroot/proc(/.*)?                       all files          <<None>>
+/var/named/chroot/run/named.*                      all files          system_u:object_r:named_var_run_t:s0
+/var/named/chroot/usr/lib(/.*)?                    all files          system_u:object_r:lib_t:s0
+/var/named/chroot/var/log                          directory          system_u:object_r:var_log_t:s0
+/var/named/chroot/var/log/named.*                  regular file       system_u:object_r:named_log_t:s0
+/var/named/chroot/var/named(/.*)?                  all files          system_u:object_r:named_zone_t:s0
+/var/named/chroot/var/named/data(/.*)?             all files          system_u:object_r:named_cache_t:s0
+/var/named/chroot/var/named/dynamic(/.*)?          all files          system_u:object_r:named_cache_t:s0
+/var/named/chroot/var/named/named\.ca              regular file       system_u:object_r:named_conf_t:s0
+/var/named/chroot/var/named/slaves(/.*)?           all files          system_u:object_r:named_cache_t:s0
+/var/named/chroot/var/run/dbus(/.*)?               all files          system_u:object_r:system_dbusd_var_run_t:s0
+/var/named/chroot/var/run/named.*                  all files          system_u:object_r:named_var_run_t:s0
+/var/named/chroot/var/tmp(/.*)?                    all files          system_u:object_r:named_cache_t:s0
+/var/named/chroot_sdb/dev                          directory          system_u:object_r:device_t:s0
+/var/named/chroot_sdb/dev/null                     character device   system_u:object_r:null_device_t:s0
+/var/named/chroot_sdb/dev/random                   character device   system_u:object_r:random_device_t:s0
+/var/named/chroot_sdb/dev/urandom                  character device   system_u:object_r:urandom_device_t:s0
+/var/named/chroot_sdb/dev/zero                     character device   system_u:object_r:zero_device_t:s0
+/var/named/data(/.*)?                              all files          system_u:object_r:named_cache_t:s0
+/var/named/dynamic(/.*)?                           all files          system_u:object_r:named_cache_t:s0
+/var/named/named\.ca                               regular file       system_u:object_r:named_conf_t:s0
+/var/named/slaves(/.*)?                            all files          system_u:object_r:named_cache_t:s0
+/var/run/bind(/.*)?                                all files          system_u:object_r:named_var_run_t:s0
+/var/run/ecblp0                                    named pipe         system_u:object_r:cupsd_var_run_t:s0
+/var/run/initctl                                   named pipe         system_u:object_r:initctl_t:s0
+/var/run/named(/.*)?                               all files          system_u:object_r:named_var_run_t:s0
+/var/run/ndc                                       socket             system_u:object_r:named_var_run_t:s0
+/var/run/systemd/initctl/fifo                      named pipe         system_u:object_r:initctl_t:s0
+/var/run/unbound(/.*)?                             all files          system_u:object_r:named_var_run_t:s0
+/var/named/chroot/usr/lib64 = /usr/lib
+/var/named/chroot/lib64 = /usr/lib
+/var/named/chroot/var = /var
+
+````
+
+````
+[root@ns01 ~]# sudo chcon -R -t named_zone_t /etc/named
+[root@ns01 ~]# ls -laZ /etc/named
+total 28
+drw-rwx---.  3 root named system_u:object_r:named_zone_t:s0      121 Jul 12 18:14 .
+drwxr-xr-x. 85 root root  system_u:object_r:etc_t:s0            8192 Jul 12 18:14 ..
+drw-rwx---.  2 root named unconfined_u:object_r:named_zone_t:s0   56 Jul 12 18:14 dynamic
+-rw-rw----.  1 root named system_u:object_r:named_zone_t:s0      784 Jul 12 18:14 named.50.168.192.rev
+-rw-rw----.  1 root named system_u:object_r:named_zone_t:s0      610 Jul 12 18:14 named.dns.lab
+-rw-rw----.  1 root named system_u:object_r:named_zone_t:s0      609 Jul 12 18:14 named.dns.lab.view1
+-rw-rw----.  1 root named system_u:object_r:named_zone_t:s0      657 Jul 12 18:14 named.newdns.lab
+[root@ns01 ~]#
+
+````
+
+
+````
+[root@client ~]# nsupdate -k /etc/named.zonetransfer.key
+> server 192.168.50.10
+> server 192.168.50.10
+> zone ddns.lab
+> update add www.ddns.lab. 60 A 192.168.50.15
+> send
+> quit
+[root@client ~]# dig www.ddns.lab
+
+; <<>> DiG 9.16.23-RH <<>> www.ddns.lab
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 65026
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: c8c92e3a572a32eb010000006872ac41c58d2de04a2c51e5 (good)
+;; QUESTION SECTION:
+;www.ddns.lab.                  IN      A
+
+;; ANSWER SECTION:
+www.ddns.lab.           60      IN      A       192.168.50.15
+
+;; Query time: 0 msec
+;; SERVER: 192.168.50.10#53(192.168.50.10)
+;; WHEN: Sat Jul 12 18:41:05 UTC 2025
+;; MSG SIZE  rcvd: 85
+
+[root@client ~]#
+
+````
+
+
+````
+Last login: Sat Jul 12 18:19:39 2025 from 10.0.2.2
+[vagrant@client ~]$ dig @192.168.50.10 www.ddns.lab
+
+; <<>> DiG 9.16.23-RH <<>> @192.168.50.10 www.ddns.lab
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 17603
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: de2d759946215d26010000006872ae9a9766d5e2431d46ef (good)
+;; QUESTION SECTION:
+;www.ddns.lab.                  IN      A
+
+;; ANSWER SECTION:
+www.ddns.lab.           60      IN      A       192.168.50.15
+
+;; Query time: 3 msec
+;; SERVER: 192.168.50.10#53(192.168.50.10)
+;; WHEN: Sat Jul 12 18:51:06 UTC 2025
+;; MSG SIZE  rcvd: 85
+
+````
+
+````
+[vagrant@ns01 ~]$ sudo -i
+[root@ns01 ~]# restorecon -v -R /etc/named
+Relabeled /etc/named from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
+Relabeled /etc/named/named.dns.lab from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
+Relabeled /etc/named/named.dns.lab.view1 from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
+Relabeled /etc/named/dynamic from unconfined_u:object_r:named_zone_t:s0 to unconfined_u:object_r:named_conf_t:s0
+Relabeled /etc/named/dynamic/named.ddns.lab from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
+Relabeled /etc/named/dynamic/named.ddns.lab.view1 from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
+Relabeled /etc/named/dynamic/named.ddns.lab.view1.jnl from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
+Relabeled /etc/named/named.newdns.lab from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
+Relabeled /etc/named/named.50.168.192.rev from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
+
+````
+
