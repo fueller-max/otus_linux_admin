@@ -527,7 +527,7 @@ above with their current state. For more information about a specific
 VM, run `vagrant status NAME`.
 ````
 
-* Заходим по SHH на виртуальную машину Client:
+* Заходим по ssh на виртуальную машину Client:
 
 ````bash
 ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant ssh client
@@ -700,7 +700,7 @@ www.ddns.lab.           60      IN      A       192.168.50.15
 ;; MSG SIZE  rcvd: 85
 
 ````
-В случае необходимости есть возмжность вернуть правила обратно:
+В случае необходимости есть возможность вернуть правила обратно:
 
 ````bash
 [vagrant@ns01 ~]$ sudo -i
