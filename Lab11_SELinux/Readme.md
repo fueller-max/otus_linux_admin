@@ -324,7 +324,9 @@ Job for nginx.service failed because the control process exited with error code.
 See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
 
 ````
-2. Part 2
+2.	Обеспечение работоспособности приложения при включенном SELinux
+
+* Скачиваем репозиторий с Vagrant файлом и Ansible playbook`ом:
 
 ````bash
 root@otus:/home/otus# git clone https://github.com/Nickmob/vagrant_selinux_dns_problems.git
@@ -337,7 +339,9 @@ Receiving objects: 100% (32/32), 7.23 KiB | 2.41 MiB/s, done.
 Resolving deltas: 100% (9/9), done.
 ```
 
-````
+* На машине установлен Vagrant и Ansible, запускаем процесс развертывания машин:
+
+````bash
 ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant up
 ==> vagrant: A new version of Vagrant is available: 2.4.7 (installed version: 2.4.1)!
 ==> vagrant: To upgrade visit: https://www.vagrantup.com/downloads.html
@@ -508,7 +512,10 @@ client                     : ok=7    changed=5    unreachable=0    failed=0    s
 
 ````
 
-````
+* После отработки Vagrant и плэйбуков имеем две запущенные виртуальные машины:
+
+
+````bash
 ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant status
 Current machine states:
 
@@ -520,7 +527,9 @@ above with their current state. For more information about a specific
 VM, run `vagrant status NAME`.
 ````
 
-````
+* Заходим по SHH на виртуальную машину Client:
+
+````bash
 ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant ssh client
 ###############################
 ### Welcome to the DNS lab! ###
@@ -546,7 +555,9 @@ ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant ssh client
 Last login: Sat Jul 12 18:17:34 2025 from 10.0.2.2
 ````
 
-```
+В данном машине пробуем изменить настройки в зону:
+
+```` bash
 [vagrant@client ~]$ nsupdate -k /etc/named.zonetransfer.key
 > server 192.168.50.10
 > zone ddns.lab
@@ -557,8 +568,11 @@ update failed: SERVFAIL
 [vagrant@client ~]$
 
 ````
+Видим, что настройки не удалось применить. 
 
-````
+Анализиуря логи сервера и с примением утилиты  audit2why можно получить информацию о причине проблемы:
+
+````bash
 ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant ssh ns01
 Last login: Sat Jul 12 18:14:54 2025 from 10.0.2.2
 [vagrant@ns01 ~]$
@@ -568,33 +582,6 @@ cat: /var/log/audit/audit.log: Permission denied
 Nothing to do
 [vagrant@ns01 ~]$ sudo -i
 [root@ns01 ~]# cat /var/log/audit/audit.log | audit2why
-type=AVC msg=audit(1752344045.646:682): avc:  denied  { dac_read_search } for  pid=3338 comm="20-chrony-dhcp" capability=2  scontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tcontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tclass=capability permissive=0
-
-        Was caused by:
-                Missing type enforcement (TE) allow rule.
-
-                You can use audit2allow to generate a loadable module to allow this access.
-
-type=AVC msg=audit(1752344045.646:682): avc:  denied  { dac_override } for  pid=3338 comm="20-chrony-dhcp" capability=1  scontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tcontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tclass=capability permissive=0
-
-        Was caused by:
-                Missing type enforcement (TE) allow rule.
-
-                You can use audit2allow to generate a loadable module to allow this access.
-
-type=AVC msg=audit(1752344046.043:695): avc:  denied  { dac_read_search } for  pid=3395 comm="20-chrony-dhcp" capability=2  scontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tcontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tclass=capability permissive=0
-
-        Was caused by:
-                Missing type enforcement (TE) allow rule.
-
-                You can use audit2allow to generate a loadable module to allow this access.
-
-type=AVC msg=audit(1752344046.043:695): avc:  denied  { dac_override } for  pid=3395 comm="20-chrony-dhcp" capability=1  scontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tcontext=system_u:system_r:NetworkManager_dispatcher_chronyc_t:s0 tclass=capability permissive=0
-
-        Was caused by:
-                Missing type enforcement (TE) allow rule.
-
-                You can use audit2allow to generate a loadable module to allow this access.
 
 type=AVC msg=audit(1752344549.813:1767): avc:  denied  { write } for  pid=9633 comm="isc-net-0000" name="dynamic" dev="sda4" ino=34030135 scontext=system_u:system_r:named_t:s0 tcontext=unconfined_u:object_r:named_conf_t:s0 tclass=dir permissive=0
 
@@ -606,15 +593,20 @@ type=AVC msg=audit(1752344549.813:1767): avc:  denied  { write } for  pid=9633 c
 [root@ns01 ~]#
 
 ````
+Видно, что целевой контект безопасности тут "named_conf_t" 
 
-````
+Однако, на сервере используется контекст "named_zone_t":
+
+````bash
 [root@ns01 ~]# ls -alZ /var/named/named.localhost
 -rw-r-----. 1 root named system_u:object_r:named_zone_t:s0 152 Jun 24 13:47 /var/named/named.localhost
-
 ````
 
+Собственно, несовпадение данных контекстов приводит к проблеме невозможности настройки зоны.
 
-````
+В коинфигах etc/named везде используется контект "named_conf_t":
+
+````bash
 [root@ns01 ~]# ls -laZ /etc/named
 total 28
 drw-rwx---.  3 root named system_u:object_r:named_conf_t:s0      121 Jul 12 18:14 .
@@ -624,95 +616,12 @@ drw-rwx---.  2 root named unconfined_u:object_r:named_conf_t:s0   56 Jul 12 18:1
 -rw-rw----.  1 root named system_u:object_r:named_conf_t:s0      610 Jul 12 18:14 named.dns.lab
 -rw-rw----.  1 root named system_u:object_r:named_conf_t:s0      609 Jul 12 18:14 named.dns.lab.view1
 -rw-rw----.  1 root named system_u:object_r:named_conf_t:s0      657 Jul 12 18:14 named.newdns.lab
-
 ````
 
-````
-[root@ns01 ~]# sudo semanage fcontext -l | grep named
-/dev/gpmdata                                       named pipe         system_u:object_r:gpmctl_t:s0
-/dev/initctl                                       named pipe         system_u:object_r:initctl_t:s0
-/dev/xconsole                                      named pipe         system_u:object_r:xconsole_device_t:s0
-/dev/xen/tapctrl.*                                 named pipe         system_u:object_r:xenctl_t:s0
-/etc/named(/.*)?                                   all files          system_u:object_r:named_conf_t:s0
-/etc/named\.caching-nameserver\.conf               regular file       system_u:object_r:named_conf_t:s0
-/etc/named\.conf                                   regular file       system_u:object_r:named_conf_t:s0
-/etc/named\.rfc1912.zones                          regular file       system_u:object_r:named_conf_t:s0
-/etc/named\.root\.hints                            regular file       system_u:object_r:named_conf_t:s0
-/etc/rc\.d/init\.d/named                           regular file       system_u:object_r:named_initrc_exec_t:s0
-/etc/rc\.d/init\.d/named-sdb                       regular file       system_u:object_r:named_initrc_exec_t:s0
-/etc/rc\.d/init\.d/unbound                         regular file       system_u:object_r:named_initrc_exec_t:s0
-/etc/rndc.*                                        regular file       system_u:object_r:named_conf_t:s0
-/etc/unbound(/.*)?                                 all files          system_u:object_r:named_conf_t:s0
-/usr/lib/systemd/system/named-sdb.*                regular file       system_u:object_r:named_unit_file_t:s0
-/usr/lib/systemd/system/named.*                    regular file       system_u:object_r:named_unit_file_t:s0
-/usr/lib/systemd/system/unbound.*                  regular file       system_u:object_r:named_unit_file_t:s0
-/usr/lib/systemd/systemd-hostnamed                 regular file       system_u:object_r:systemd_hostnamed_exec_t:s0
-/usr/sbin/lwresd                                   regular file       system_u:object_r:named_exec_t:s0
-/usr/sbin/named                                    regular file       system_u:object_r:named_exec_t:s0
-/usr/sbin/named-checkconf                          regular file       system_u:object_r:named_checkconf_exec_t:s0
-/usr/sbin/named-pkcs11                             regular file       system_u:object_r:named_exec_t:s0
-/usr/sbin/named-sdb                                regular file       system_u:object_r:named_exec_t:s0
-/usr/sbin/unbound                                  regular file       system_u:object_r:named_exec_t:s0
-/usr/sbin/unbound-anchor                           regular file       system_u:object_r:named_exec_t:s0
-/usr/sbin/unbound-checkconf                        regular file       system_u:object_r:named_exec_t:s0
-/usr/sbin/unbound-control                          regular file       system_u:object_r:named_exec_t:s0
-/usr/share/munin/plugins/named                     regular file       system_u:object_r:services_munin_plugin_exec_t:s0
-/var/lib/softhsm(/.*)?                             all files          system_u:object_r:named_cache_t:s0
-/var/lib/unbound(/.*)?                             all files          system_u:object_r:named_cache_t:s0
-/var/log/named.*                                   regular file       system_u:object_r:named_log_t:s0
-/var/named(/.*)?                                   all files          system_u:object_r:named_zone_t:s0
-/var/named/chroot(/.*)?                            all files          system_u:object_r:named_conf_t:s0
-/var/named/chroot/dev                              directory          system_u:object_r:device_t:s0
-/var/named/chroot/dev/log                          socket             system_u:object_r:devlog_t:s0
-/var/named/chroot/dev/null                         character device   system_u:object_r:null_device_t:s0
-/var/named/chroot/dev/random                       character device   system_u:object_r:random_device_t:s0
-/var/named/chroot/dev/urandom                      character device   system_u:object_r:urandom_device_t:s0
-/var/named/chroot/dev/zero                         character device   system_u:object_r:zero_device_t:s0
-/var/named/chroot/etc(/.*)?                        all files          system_u:object_r:etc_t:s0
-/var/named/chroot/etc/localtime                    regular file       system_u:object_r:locale_t:s0
-/var/named/chroot/etc/named\.caching-nameserver\.conf regular file       system_u:object_r:named_conf_t:s0
-/var/named/chroot/etc/named\.conf                  regular file       system_u:object_r:named_conf_t:s0
-/var/named/chroot/etc/named\.rfc1912.zones         regular file       system_u:object_r:named_conf_t:s0
-/var/named/chroot/etc/named\.root\.hints           regular file       system_u:object_r:named_conf_t:s0
-/var/named/chroot/etc/pki(/.*)?                    all files          system_u:object_r:cert_t:s0
-/var/named/chroot/etc/rndc\.key                    regular file       system_u:object_r:dnssec_t:s0
-/var/named/chroot/lib(/.*)?                        all files          system_u:object_r:lib_t:s0
-/var/named/chroot/proc(/.*)?                       all files          <<None>>
-/var/named/chroot/run/named.*                      all files          system_u:object_r:named_var_run_t:s0
-/var/named/chroot/usr/lib(/.*)?                    all files          system_u:object_r:lib_t:s0
-/var/named/chroot/var/log                          directory          system_u:object_r:var_log_t:s0
-/var/named/chroot/var/log/named.*                  regular file       system_u:object_r:named_log_t:s0
-/var/named/chroot/var/named(/.*)?                  all files          system_u:object_r:named_zone_t:s0
-/var/named/chroot/var/named/data(/.*)?             all files          system_u:object_r:named_cache_t:s0
-/var/named/chroot/var/named/dynamic(/.*)?          all files          system_u:object_r:named_cache_t:s0
-/var/named/chroot/var/named/named\.ca              regular file       system_u:object_r:named_conf_t:s0
-/var/named/chroot/var/named/slaves(/.*)?           all files          system_u:object_r:named_cache_t:s0
-/var/named/chroot/var/run/dbus(/.*)?               all files          system_u:object_r:system_dbusd_var_run_t:s0
-/var/named/chroot/var/run/named.*                  all files          system_u:object_r:named_var_run_t:s0
-/var/named/chroot/var/tmp(/.*)?                    all files          system_u:object_r:named_cache_t:s0
-/var/named/chroot_sdb/dev                          directory          system_u:object_r:device_t:s0
-/var/named/chroot_sdb/dev/null                     character device   system_u:object_r:null_device_t:s0
-/var/named/chroot_sdb/dev/random                   character device   system_u:object_r:random_device_t:s0
-/var/named/chroot_sdb/dev/urandom                  character device   system_u:object_r:urandom_device_t:s0
-/var/named/chroot_sdb/dev/zero                     character device   system_u:object_r:zero_device_t:s0
-/var/named/data(/.*)?                              all files          system_u:object_r:named_cache_t:s0
-/var/named/dynamic(/.*)?                           all files          system_u:object_r:named_cache_t:s0
-/var/named/named\.ca                               regular file       system_u:object_r:named_conf_t:s0
-/var/named/slaves(/.*)?                            all files          system_u:object_r:named_cache_t:s0
-/var/run/bind(/.*)?                                all files          system_u:object_r:named_var_run_t:s0
-/var/run/ecblp0                                    named pipe         system_u:object_r:cupsd_var_run_t:s0
-/var/run/initctl                                   named pipe         system_u:object_r:initctl_t:s0
-/var/run/named(/.*)?                               all files          system_u:object_r:named_var_run_t:s0
-/var/run/ndc                                       socket             system_u:object_r:named_var_run_t:s0
-/var/run/systemd/initctl/fifo                      named pipe         system_u:object_r:initctl_t:s0
-/var/run/unbound(/.*)?                             all files          system_u:object_r:named_var_run_t:s0
-/var/named/chroot/usr/lib64 = /usr/lib
-/var/named/chroot/lib64 = /usr/lib
-/var/named/chroot/var = /var
 
-````
+Меняем тип контекста безопасности для каталога /etc/named на "named_zone_t" :
 
-````
+````bash
 [root@ns01 ~]# sudo chcon -R -t named_zone_t /etc/named
 [root@ns01 ~]# ls -laZ /etc/named
 total 28
@@ -727,8 +636,9 @@ drw-rwx---.  2 root named unconfined_u:object_r:named_zone_t:s0   56 Jul 12 18:1
 
 ````
 
+Заново пробуем настроить зону на клиенте и видим, что теперь все проходит успешно:
 
-````
+````bash
 [root@client ~]# nsupdate -k /etc/named.zonetransfer.key
 > server 192.168.50.10
 > server 192.168.50.10
@@ -762,8 +672,9 @@ www.ddns.lab.           60      IN      A       192.168.50.15
 
 ````
 
+После рестарта системы также все работает:
 
-````
+````bash
 Last login: Sat Jul 12 18:19:39 2025 from 10.0.2.2
 [vagrant@client ~]$ dig @192.168.50.10 www.ddns.lab
 
@@ -789,8 +700,9 @@ www.ddns.lab.           60      IN      A       192.168.50.15
 ;; MSG SIZE  rcvd: 85
 
 ````
+В случае необходимости есть возмжность вернуть правила обратно:
 
-````
+````bash
 [vagrant@ns01 ~]$ sudo -i
 [root@ns01 ~]# restorecon -v -R /etc/named
 Relabeled /etc/named from system_u:object_r:named_zone_t:s0 to system_u:object_r:named_conf_t:s0
