@@ -6,7 +6,7 @@
 
 ### Задание
 
-0. Установать Nginx на rpm based Linux машину
+ 0. Установать Nginx на rpm based Linux машину
 
 1. Запустить nginx на нестандартном порту 3-мя разными способами:
 
@@ -24,9 +24,9 @@
 
 ### Решение
 
-0. Установка Nginx на rpm based Linux машину
+#### 0. Установка Nginx на rpm based Linux машину
 
-Установим Nginx на дистрибутив Alma Linux 9. В конфигруации сразу указываем необходимые нам порты, на которых будет находится Nginx - 4881. Сразу запускаем Nginx.
+Установим Nginx на дистрибутив Alma Linux 9. В конфигруации указываем необходимые нам порты, на которых будет находится Nginx - 4881. Запускаем Nginx.
 
 ````bash
 yum install -y epel-release
@@ -37,7 +37,7 @@ yum install -y epel-release
       systemctl start nginx
 ````
 
-1. Проверка статуса и запуск Nginx различными способами.
+#### 1. Проверка статуса и запуск Nginx различными способами.
 
 * Проверям статус Nginx после запуска в предыдущем пункте:
 
@@ -60,7 +60,7 @@ Jun 28 13:50:13 localhost.localdomain systemd[1]: Failed to start The nginx HTTP
 
 ````
 
-Видим, что Nginx не смог запуститься(статус failed). Из логов также видно, что причина есть осутствие необходимых прав доступа к нестандартному для web сервиса порту - 4881.
+Видим, что Nginx не смог запуститься(статус failed). Из логов также видно, что причина есть отсутствие необходимых прав доступа к нестандартному для web сервиса порту - 4881.
 
 Отключаем firewall:
 
@@ -89,11 +89,11 @@ Jun 28 14:01:59 localhost.localdomain systemd[1]: firewalld.service: Consumed 2.
 ````bash
 [root@localhost otus]# getenforce
 Enforcing
+````
 
-````bash
 SELinux находится в состоянии Enforcing (принудительный) и обеспечивает защиту системы.
 
-Проверим лог SELinux c поиском по порту 4881. Находим необходимые записи, проверям, что они относятся к Nginx и отмечаем время их возникновения.
+Проверим лог SELinux c поиском по порту 4881. Находим необходимые записи и проверям, что они относятся к Nginx и отмечаем время их возникновения.
 
 ````bash
 [root@localhost otus]# cat  /var/log/audit/audit.log | grep 4881
@@ -149,7 +149,7 @@ Jun 28 14:10:20 localhost.localdomain systemd[1]: Started The nginx HTTP and rev
 
 ````
 
-Видим, что послу активации NIS, Nginx смог запуститья в нормальнои режиме.
+Видим, что послу активации NIS, Nginx смог запуститься в нормальнои режиме.
 
 ![Nginx start page](/Lab11_SELinux/pics/var1_Niginx_OK.PNG)
 
@@ -268,7 +268,7 @@ See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for det
 
 ````
 
-Используя логи + утилиту audit2allow, которая формирует policy-пакет для nginx: 
+Используя логи + утилиту audit2allow, которая формирует policy-пакет для Nginx: 
 
 ````bash
 [root@localhost otus]# grep nginx /var/log/audit/audit.log | audit2allow -M nginx
@@ -307,7 +307,7 @@ Jun 28 14:32:27 localhost.localdomain systemd[1]: Started The nginx HTTP and rev
 
 ````
 
-Достоинством метода явялется то, что политка остается постоянной (сохраняется после перезагрузки). 
+Достоинством метода является то, что политка остается постоянной (сохраняется после перезагрузки). 
 
 Удаляем установленнй пакет безопасности для Nginx:
 
@@ -324,7 +324,7 @@ Job for nginx.service failed because the control process exited with error code.
 See "systemctl status nginx.service" and "journalctl -xeu nginx.service" for details.
 
 ````
-2.	Обеспечение работоспособности приложения при включенном SELinux
+#### 2.	Обеспечение работоспособности приложения при включенном SELinux
 
 * Скачиваем репозиторий с Vagrant файлом и Ansible playbook`ом:
 
