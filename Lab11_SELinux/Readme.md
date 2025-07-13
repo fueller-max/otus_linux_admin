@@ -337,7 +337,7 @@ remote: Compressing objects: 100% (21/21), done.
 remote: Total 32 (delta 9), reused 29 (delta 9), pack-reused 0 (from 0)
 Receiving objects: 100% (32/32), 7.23 KiB | 2.41 MiB/s, done.
 Resolving deltas: 100% (9/9), done.
-```
+````
 
 * На машине установлен Vagrant и Ansible, запускаем процесс развертывания машин:
 
@@ -555,7 +555,7 @@ ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant ssh client
 Last login: Sat Jul 12 18:17:34 2025 from 10.0.2.2
 ````
 
-В данном машине пробуем изменить настройки в зону:
+В данной машине пробуем изменить настройки в зоны:
 
 ```` bash
 [vagrant@client ~]$ nsupdate -k /etc/named.zonetransfer.key
@@ -570,7 +570,7 @@ update failed: SERVFAIL
 ````
 Видим, что настройки не удалось применить. 
 
-Анализиуря логи сервера и с примением утилиты  audit2why можно получить информацию о причине проблемы:
+Анализируя логи сервера(ns01) вкупе с утилитой  audit2why можно получить информацию о причине проблемы:
 
 ````bash
 ansible@ansible:~/vagrant_selinux_dns_problems$ vagrant ssh ns01
@@ -593,9 +593,9 @@ type=AVC msg=audit(1752344549.813:1767): avc:  denied  { write } for  pid=9633 c
 [root@ns01 ~]#
 
 ````
-Видно, что целевой контект безопасности тут "named_conf_t" 
+Видно, что целевой контект безопасности тут обозначен "named_conf_t" 
 
-Однако, на сервере используется контекст "named_zone_t":
+Однако, на на самом сервере используется контекст "named_zone_t":
 
 ````bash
 [root@ns01 ~]# ls -alZ /var/named/named.localhost
@@ -604,7 +604,7 @@ type=AVC msg=audit(1752344549.813:1767): avc:  denied  { write } for  pid=9633 c
 
 Собственно, несовпадение данных контекстов приводит к проблеме невозможности настройки зоны.
 
-В коинфигах etc/named везде используется контект "named_conf_t":
+В конфигах etc/named везде используется контекст "named_conf_t":
 
 ````bash
 [root@ns01 ~]# ls -laZ /etc/named
@@ -619,7 +619,7 @@ drw-rwx---.  2 root named unconfined_u:object_r:named_conf_t:s0   56 Jul 12 18:1
 ````
 
 
-Меняем тип контекста безопасности для каталога /etc/named на "named_zone_t" :
+Меняем тип контекста безопасности для каталога /etc/named на "named_zone_t":
 
 ````bash
 [root@ns01 ~]# sudo chcon -R -t named_zone_t /etc/named
