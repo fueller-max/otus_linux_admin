@@ -1,0 +1,10 @@
+version: '0.1'
+services:
+  my-nginx:
+    image: fuellermax/max-custom-nginx_v_1:latest
+    ports:
+      - "8081:80" # Example: Map host port 80 to container port 80
+    # Add other configurations as needed, e.g., volumes, environment variables
+    # volumes:
+    #   - ./data:/app/data
+    # environment:
