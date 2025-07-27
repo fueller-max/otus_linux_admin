@@ -84,7 +84,7 @@ For more examples and ideas, visit:
 
 #### 2. Установка Docker Compose - как плагин
 
-Плагин Docker Compose был уже установлен в рамках предыдущего шага. Проверим успшность установки, вызвав версию:
+Плагин Docker Compose был уже установлен в рамках предыдущего шага. Проверим успешность установки, вызвав версию:
 
 ````bash
 master@docker:~$ docker compose version
@@ -126,7 +126,7 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ````
 
-В Dockerfile копируем кастомной html в каталог Nginx`a.
+В Dockerfile командой COPY копируем наш кастомный html в каталог Nginx`a.
 Содержание кастомной html страницы:
 
 ````html
@@ -142,7 +142,7 @@ CMD ["nginx", "-g", "daemon off;"]
 </html>
 ````
 
-После этого запускаем build образа на базе созданного Dockerfile:
+После этого запускаем build образа из Dockerfile:
 
 ````bash
 master@docker:~/docker_test$ sudo docker build -t max-custom-nginx_v_1 . 
@@ -155,7 +155,7 @@ master@docker:~/docker_test$ sudo docker run -d -p 8080:80 max-custom-nginx_v_1
 d375c923ac6a92e2968024de7bfe75936fea4130f9b03a0b46d759244704bc4f
 ````
 
-Осуществляем проброс 8080 порта хоста к 80 порту контейнера(на котором слушает запущенный nginx)
+Осуществляем проброс 8080 порта хоста к 80 порту контейнера(на котором слушает запущенный nginx в контейнере)
 
 Убеждаемся, что контейнер запущен:
 
@@ -170,7 +170,10 @@ d375c923ac6a   max-custom-nginx_v_1   "/docker-entrypoint.…"   17 seconds ago 
 
 ![html](/Lab14_Docker/pics/Nginx_CustomPage.PNG)
 
-Опубликуем наш образ на DockerHub:
+* Опубликуем наш образ на DockerHub.
+ Далее действия будем выполнять в системе Windowsб используя Docker Desktop, Git Bash для Windows.
+
+ Создаем образ из Dockerfile: 
 
 ````bash
 Maksim@DESKTOP-U5KCIER MINGW64 /c/otus/LinuxAdmin/otus_linux_admin/Lab14_Docker (main)
@@ -214,6 +217,8 @@ $ docker build -t max-custom-nginx_v_1 .
 Use 'docker scan' to run Snyk tests against images to find vulnerabilities and learn how to fix them
 ````
 
+Проверяем, что образ создался и пушим образ в Docker Hub:
+
 ````bash
 Maksim@DESKTOP-U5KCIER MINGW64 /c/otus/LinuxAdmin/otus_linux_admin/Lab14_Docker (main)
 $ docker images
@@ -248,11 +253,17 @@ daa8ffa7606a: Pushed
 latest: digest: sha256:483e9d5e6952189f82d9881264e26793507189f87690d517c180283c9fe7182e size: 2407
 ````
 
+Образ запушился и доступен по ссылке:
+
 <https://hub.docker.com/repository/docker/fuellermax/max-custom-nginx_v_1/tags>
 
 ````bash
 docker pull fuellermax/max-custom-nginx_v_1:latest
 ````
+
+Попробуем запустить запушенный образ с использованием Docker Compose.
+
+Создаем Docker Compose. Указываем образ из репозитория:
 
 ````Dockerfile
 version: '0.1'
@@ -267,6 +278,8 @@ services:
     # environment:
 
 ````
+
+Далее запускаем Docker Compose:
 
 ````bash
 Maksim@DESKTOP-U5KCIER MINGW64 /c/otus/LinuxAdmin/otus_linux_admin/Lab14_Docker (main)
@@ -283,6 +296,8 @@ MES
 b14_docker-my-nginx-1
 ````
 
+Видим, что образ подтянулся и успешно запустился.
+
 ![docker_compose](/Lab14_Docker/pics/Nginx_CustomPage_8081.PNG)
 
 #### 4. Определить разницу между контейнером и образом
@@ -290,5 +305,15 @@ b14_docker-my-nginx-1
 Образ представляет собой шаблон в котором находятся все необходимые компоненты(библиотеки, зависимости и пр.), в то время как контейнер - это запущенный экземпляр образа. Образ - это шаблон, на основе которого создается контейнер, существует отдельно и не может быть изменен.
 
 #### 5. Вывод описать в домашнем задании
- 
+
+В ходе выполнения задания было сделано следующее:
+* Собран кастомный образ Nginx на базе alpine
+* На базе образа запущен контейнер и выполнен проборос портов для возможности доступа извне
+* Рассмотрен вопрос размещения образов на DockerHub.
+* Выполнен запуск контейнера с использованием образа из репозитория с помощью Docker Compose.
+
+Таким образом, изучен базовый функционал работы с Docker.
+
 #### 6. Можно ли в контейнере собрать ядро?
+
+В целом, суть Docker заключается в том, что все контейнеры используют ядро хостовой OS, а не свое. За счет чего и достигается легковесность и быстродействие. Для наличия отдельного ядра необходимо использовать виртуализацию. Тем не менее, существуют способы собрать и запустить контейнер со своим ядром, что требует запуска в привелегированном режиме и монтирования директорий хостовой ОС. Однако, это не является общепринятой и рекомендуемой практикой при использовании контейнерезации.
