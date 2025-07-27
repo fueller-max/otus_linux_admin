@@ -263,7 +263,7 @@ docker pull fuellermax/max-custom-nginx_v_1:latest
 
 Попробуем запустить запушенный образ с использованием Docker Compose.
 
-Создаем Docker Compose. Указываем образ из репозитория:
+Создаем docker-compose.yaml c указанием образа из нашего репозитория:
 
 ````Dockerfile
 version: '0.1'
@@ -279,7 +279,7 @@ services:
 
 ````
 
-Далее запускаем Docker Compose:
+Далее запускаем docker compose:
 
 ````bash
 Maksim@DESKTOP-U5KCIER MINGW64 /c/otus/LinuxAdmin/otus_linux_admin/Lab14_Docker (main)
