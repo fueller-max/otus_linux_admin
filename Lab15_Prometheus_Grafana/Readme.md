@@ -2,7 +2,7 @@
 
 ## Цель
 
-научиться настраивать дашборд
+Научиться устанавливать систему мониторинга Prometheus + Grafana, настраивать дашборд
 
 ### Задание
 
@@ -186,9 +186,9 @@ info: Not creating home directory `/usr/share/grafana'.
 
 #### 4. Настройка Node Exporter на мониторинговом хосте.
 
-Будем монитроить хост в локальной сети. Необходимо установить на нем Node Exporter, который будет отдавать данные в Prometheus.
+Будем мониторить хост в локальной сети. Необходимо установить на нем Node Exporter, который будет отдавать данные в Prometheus.
 
-* Скачиваем и распаковываем Node Exporter 
+* Скачиваем и распаковываем Node Exporter на хосте
 
 ```bash
 master@home-server:~$ wget https://github.com/prometheus/node_exporter/releases/download/v1.5.0/node_exporter-1.5.0.linux-amd64.tar.gz
@@ -201,6 +201,7 @@ master@home-server:~$ sudo useradd -rs /bin/false nodeusr
 master@home-server:~$ sudo mv node_exporter-1.5.0.linux-amd64/node_exporter /usr/local/bin/
 ````
 * Создаем сервис
+
 ```bash
 master@home-server:~$ sudo nano /etc/systemd/system/node_exporter.service
 
@@ -214,8 +215,9 @@ Type=simple
 ExecStart=/usr/local/bin/node_exporter --web.listen-address="0.0.0.0:9100"
 [Install]
 WantedBy=multi-user.target
-````
+```
 * Запускаем сервис
+
 ```bash
 master@home-server:~$ sudo systemctl daemon-reload
 master@home-server:~$ sudo systemctl start node_exporter
@@ -235,9 +237,9 @@ master@home-server:~$ systemctl status node_exporter
      CGroup: /system.slice/node_exporter.service
              └─1851 /usr/local/bin/node_exporter
 
-```
+````
 
-Для того, что Prometheus начал сбор данных с нашего хоста в yml файле прописываем job с указанием IP/порт хоста и интервалом опроса данных
+Для того, что Prometheus начал сбор данных с нашего хоста в yml файле прописываем job с указанием IP/порт этого хоста и интервалом опроса данных
 
 
 ````bash
@@ -251,7 +253,7 @@ master@prometheus:~$ sudo nano /etc/prometheus/prometheus.yml
       - targets: ['192.168.40.12:9100']
 ````
 
-Проверяем, что данные по хосту появлись в Prometheus:
+Проверяем, что данные по хосту появились в Prometheus:
 
 ![](/Lab15_Prometheus_Grafana/pics/prometheus_home_server.jpg)
 
