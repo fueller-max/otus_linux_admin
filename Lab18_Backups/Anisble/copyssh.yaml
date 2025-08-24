@@ -1,0 +1,26 @@
+---
+- name: Copy SSH public key from client to backup
+  hosts: backup
+  become: true
+  vars:
+    borg_user: borg
+    client_public_key_path: "/home/vagrant/.ssh/id_ed25519.pub"
+
+  tasks:
+    - name: Fetch the public key from the client
+      fetch:
+        src: "{{ client_public_key_path }}"
+        dest: "/tmp/client_id_ed25519.pub"
+        flat: yes
+      delegate_to: client
+
+    - name: Add SSH public key to authorized_keys on backup
+      authorized_key:
+        user: "{{ borg_user }}"
+        key: "{{ lookup('file', '/tmp/client_id_ed25519.pub') }}"
+        state: present
+
+
+        
+
+      
