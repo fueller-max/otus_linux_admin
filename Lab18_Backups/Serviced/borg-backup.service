@@ -1,0 +1,13 @@
+[Unit]
+Description=Borg Backup
+After=network.target
+
+[Service]
+User=vagrant
+Environment=HOME=/home/vagrant
+ExecStart=/usr/local/bin/borg-backup.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
