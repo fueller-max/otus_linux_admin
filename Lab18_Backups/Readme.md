@@ -201,9 +201,17 @@ client | SUCCESS => {
 
 ````
 
+После отработки данного playbooka имеем две настроенные виртуалки для работы с бекапами. 
+
 #### 3. Настройка процесса бекапа
 
-После того, как репозиторий инициализрован, создаем скрипт, который будет выполнять процесс бекапа
+* После того, как репозиторий инициализрован(в playbook), создаем скрипт, который будет выполнять процесс бекапа на client и сохранять в удаленном репозитории backup. Бекпаить будем папку /tmp/data. 
+
+* Указываем IP репозитория, парольную фразу а также настраиваем политику удаления бекапов (prune) на 90 дней (наиболее свежий бекап в день в течении 90 дней)
+
+````bash
+/usr/local/bin/borg-backup.sh
+````
 
 ````bash
 #!/bin/bash
@@ -232,10 +240,18 @@ borg prune  --list   --keep-daily 90   "$REPO_URL"
 # Clean up the space
 borg compact "$REPO_URL"
 ````
-
-Далее создаем сервис и таймер для переродического вызова скрипта
+* Делаем скрит исполняемым.
 
 ````bash
+sudo chmod +x /usr/local/bin/borg-backup.sh
+````
+
+* Далее создаем сервис и таймер для переродического вызова скрипта. Логируем в journald.
+
+
+````bash
+/etc/systemd/system/borg-backup.service
+
 [Unit]
 Description=Borg Backup
 After=network.target
@@ -253,6 +269,8 @@ WantedBy=multi-user.target
 ````
 
 ````bash
+/etc/systemd/system/borg-backup.timer
+
 [Unit] 
 Description=Borg Backup 
  
@@ -262,16 +280,9 @@ OnUnitActiveSec=5min
 [Install] 
 WantedBy=timers.target
 ````
+Время срабатвания - каждые 5 минут.
 
 
-````bash
-vagrant@client://usr/local/bin$ sudo nano  borg-backup.sh
-
-````
-
-````bash
-sudo chmod +x /usr/local/bin/borg-backup.sh
-````
 
 * Cмотрим работу
 
@@ -298,8 +309,11 @@ Aug 28 16:46:15 client systemd[1]: borg-backup.service: Consumed 2.690s CPU time
 
 ````
 
+Видим, что сервис отработал, вызвал скрипт, который сделал бекап, а также сделал процедуру удаления старого бекапа (prune)
+
 #### 4.Восстановление из бекапа
 
+* Для того, чтобы посмотреть, какие бекапы есть в репозитории используется команда borg list: 
 
 ````bash
 
@@ -310,13 +324,23 @@ backup-20250828101726                Thu, 2025-08-28 10:17:36 [935e5d9e3ecc96793
 backup-2025-08-28_16:46:08           Thu, 2025-08-28 16:46:10 [bb71a38b68a453c2d5cda7dfd0b1aa746a6bae1b0a4db6fff6f7b77d7113fa9e]
 ````
 
+* Для того, чтобы посмотреть содержимое бекапа, используем также команду list с указанием конкретного бекапа чере ::
+
 ````bash
-vagrant@client:/$ borg list borg@192.168.56.160:/var/backup/
-Enter passphrase for key ssh://borg@192.168.56.160/var/backup:
-backup-20250828101726                Thu, 2025-08-28 10:17:36 [935e5d9e3ecc96793632ad56b4f7fcfb7f627b915e4b4bb63c09b83714e5bd32]
-backup-2025-08-28_16:51:32           Thu, 2025-08-28 16:51:34 [726d4f16c35edc061fb31a26e4c66e4d312bc2862ebd8b97c2f13d7334ae2029]
 
 vagrant@client:/$ borg list borg@192.168.56.160:/var/backup/::backup-2025-08-28_16:51:32 tmp/data
+Enter passphrase for key ssh://borg@192.168.56.160/var/backup:
+drwxrwxr-x vagrant vagrant        0 Thu, 2025-08-28 16:41:03 tmp/data
+-rw-rw-r-- vagrant vagrant        0 Thu, 2025-08-28 16:40:59 tmp/data/file1
+-rw-rw-r-- vagrant vagrant        0 Thu, 2025-08-28 16:41:02 tmp/data/file2
+-rw-rw-r-- vagrant vagrant        0 Thu, 2025-08-28 16:41:03 tmp/data/file3
+````
+
+* Для того, что восстановить данные из бекапа (restore) используем команду extract
+
+
+````bash
+vagrant@client:/$ borg extract --list borg@192.168.56.160:/var/backup/::backup-2025-08-28_16:51:32 tmp/data
 Enter passphrase for key ssh://borg@192.168.56.160/var/backup:
 drwxrwxr-x vagrant vagrant        0 Thu, 2025-08-28 16:41:03 tmp/data
 -rw-rw-r-- vagrant vagrant        0 Thu, 2025-08-28 16:40:59 tmp/data/file1
