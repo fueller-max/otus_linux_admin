@@ -129,9 +129,13 @@ sudo iptables -A OUTPUT -o lo -j ACCEPT
 sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 sudo iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
-# Allow forwarding of traffic
+# Allow forwarding of traffic to local network
 iptables -A FORWARD -i ens4 -o ens3 -j ACCEPT
 iptables -A FORWARD -i ens3 -o ens4 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Allow forwarding of traffic to Ansible host
+iptables -A FORWARD -i ens5 -o ens3 -j ACCEPT
+iptables -A FORWARD -i ens3 -o ens -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 # Allow SSH access (port 22)
 sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
@@ -212,11 +216,14 @@ ens4: 192.168.1.0/24 # offiсe 2
 Проверка доступа в Интернет:
 Central Server:
 ![ping_inetCS](/Lab19_NetworkLab/pics/Pings/centralServerPing.jpg)
-Offcie 1 Server:
+
+Office 1 Server:
 ![ping_inetof1S](/Lab19_NetworkLab/pics/Pings/office1ServerPing.jpg)
-Offcie 2 Server:
+
+Office 2 Server:
 ![ping_inetof2S](/Lab19_NetworkLab/pics/Pings/office2ServerPing.jpg)
 
+Ping Office 2 Server с Office 1 Server:
 ![ping_of2_from_of1](/Lab19_NetworkLab/pics/Pings/ping_offcie2_from_office1.jpg)
 
 
@@ -225,7 +232,10 @@ Offcie 2 Server:
 
 
 ### 2.2 Автоматизация настройки хоста с помощью Ansible
-Inet router:
+
+В качестве задачи автоматизации настроим автоматизацию разворачивания правил iptabes на роутере Inet Router с использованием Ansible.
+
+На Inet router создаем нового пользователя для работы с Ansible и правами админа:
 
 ````bash
 sudo useradd -m -s /bin/bash ansible
@@ -233,14 +243,41 @@ sudo passwd ansible
 sudo usermod -aG sudo ansible
 
 ```` 
-Ansible
+На хосте Ansible генерим ssh ключи и копируем их на Inet router.
+
+Далее настраиваем базовую инфраструктуру на ansible (конфиги, инвентари) и проверяем, что Ansible имеет доступ к Inet outer:
 
 ````bash
 ssh-keygen -t rsa -b 4096
 ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@192.168.50.10
 ````
 
-![](/Lab19_NetworkLab/pics/ansible_to_inetRouter.jpg)
+![ansible_to_router](/Lab19_NetworkLab/pics/ansible_to_inetRouter.jpg)
 
+Пишем playbook:
+
+![playbook](/Lab19_NetworkLab/pics/ansible/playbookinetRouter.jpg)
+
+Реализация playbook несколько отличается от предложенного подхода в связи с более поздней версии системы. Здесь будем использовать пакет iptables-persistence, который установим, потом скопируем файл с правилами и далее запишем правила на постоянной основе.
+
+Правила IPv4 подготовили на основании предыдущих настроек:
+
+![ipv4_rules](/Lab19_NetworkLab/pics/ansible/rules_v4.jpg)
+
+Запускаем  playbook:
+
+![playbook_fire](/Lab19_NetworkLab/pics/ansible/playbook_accomplished.jpg)
+
+Playbook отработал успешно, проверяем работу.
+
+Перезагружаем inet Router и смотрим, что правила iptables присутсвуют:
+
+![iRouterRules](/Lab19_NetworkLab/pics/ansible/iptables_after_reboot.jpg)
+
+Также проверим наличие интернета на одном из хостов:
+
+![pingAfterRestore](/Lab19_NetworkLab/pics/ansible/ping_after_restore.jpg)
+
+Видим, что доступ в интернет есть, значит правила настроены корректно и сохраняются после перезагрузки системы. 
 
 
