@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# Default Policies
-sudo iptables -P INPUT DROP        # Drop incoming by default
-sudo iptables -P FORWARD DROP     # Drop forwarded by default
-sudo iptables -P OUTPUT ACCEPT     # Allow all outgoing by default
+# Enable IP forwarding
+echo 1 > /proc/sys/net/ipv4/ip_forward
 
 # Allow loopback traffic
 sudo iptables -A INPUT -i lo -j ACCEPT
@@ -13,16 +11,21 @@ sudo iptables -A OUTPUT -o lo -j ACCEPT
 sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 sudo iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
+# Allow forwarding of traffic
+iptables -A FORWARD -i ens4 -o ens3 -j ACCEPT
+iptables -A FORWARD -i ens3 -o ens4 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
 # Allow SSH access (port 22)
 sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
 
-# Allow HTTP (port 80) and HTTPS (port 443)
-sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
-
 # Key  command for Masquerading:
-sudo iptables -t nat -A POSTROUTING -o <external_interface> -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o ens3 -j MASQUERADE
+
+# Default Policies
+sudo iptables -P INPUT DROP        # Drop incoming by default
+sudo iptables -P FORWARD DROP      # Drop forwarded by default
+sudo iptables -P OUTPUT ACCEPT     # Allow all outgoing by default
 
 # Save the rules (Ubuntu example)
 # This saves the rules to /etc/iptables/rules.v4
-# sudo iptables-save > /etc/iptables/rules.v4
+sudo iptables-save > /etc/iptables/rules.v4
