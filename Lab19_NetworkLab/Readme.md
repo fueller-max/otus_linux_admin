@@ -18,7 +18,6 @@
 * Соединить офисы в сеть согласно логической схеме и настроить роутинг
 * Интернет-трафик со всех серверов должен ходить через inetRouter
 * Все сервера должны видеть друг друга (должен проходить ping)
-* У всех новых серверов отключить дефолт на NAT (eth0), который vagrant поднимает для связи
 * Добавить дополнительные сетевые интерфейсы, если потребуется
 
 ### Решение
@@ -248,12 +247,11 @@ sudo usermod -aG sudo ansible
 ```` 
 На хосте Ansible генерим ssh ключи и копируем их на Inet router.
 
-Далее настраиваем базовую инфраструктуру на ansible (конфиги, инвентари) и проверяем, что Ansible имеет доступ к Inet outer:
-
 ````bash
 ssh-keygen -t rsa -b 4096
 ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@192.168.50.10
 ````
+Далее настраиваем базовую инфраструктуру на ansible (конфиги, инвентари) и проверяем, что Ansible имеет доступ к Inet Router:
 
 ![ansible_to_router](/Lab19_NetworkLab/pics/ansible_to_inetRouter.jpg)
 
@@ -273,7 +271,7 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub ansible@192.168.50.10
 
 Playbook отработал успешно, проверяем работу.
 
-Перезагружаем inet Router и смотрим, что правила iptables присутсвуют:
+Перезагружаем inet Router и смотрим, что правила iptables присутствуют:
 
 ![iRouterRules](/Lab19_NetworkLab/pics/ansible/iptables_after_reboot.jpg)
 
