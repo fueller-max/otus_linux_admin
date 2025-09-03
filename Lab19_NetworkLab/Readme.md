@@ -213,19 +213,24 @@ ens4: 192.168.1.0/24 # offiсe 2
 
 
 #### 2.1.8 Проверка работы
-* После настройки всех хостов проверим, что сеть функционирует, как предполагалось. Проверим, что central Server, office1Server и office1Server имеют доступ в Интернет, а также, что office1Server и office1Server "видят" друг друга.
+После настройки всех хостов проверим, что сеть функционирует, как предполагалось. Проверим, что central Server, office1Server и office1Server имеют доступ в Интернет, а также, что office1Server и office1Server "видят" друг друга.
 
 Проверка доступа в Интернет:
+
 Central Server:
+
 ![ping_inetCS](/Lab19_NetworkLab/pics/Pings/centralServerPing.jpg)
 
 Office 1 Server:
+
 ![ping_inetof1S](/Lab19_NetworkLab/pics/Pings/office1ServerPing.jpg)
 
 Office 2 Server:
+
 ![ping_inetof2S](/Lab19_NetworkLab/pics/Pings/office2ServerPing.jpg)
 
 Ping Office 2 Server с Office 1 Server:
+
 ![ping_of2_from_of1](/Lab19_NetworkLab/pics/Pings/ping_offcie2_from_office1.jpg)
 
 
