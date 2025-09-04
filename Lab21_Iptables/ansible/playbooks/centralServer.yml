@@ -1,0 +1,38 @@
+---
+- name: Install and configure NGINX on centralServer
+  hosts: centralServer
+  become: yes
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install NGINX
+      apt:
+        name: nginx
+        state: present
+
+    - name: Start NGINX service
+      service:
+        name: nginx
+        state: started
+
+    - name: Enable NGINX to start on boot
+      service:
+        name: nginx
+        enabled: yes
+
+    - name: Ensure NGINX is listening on port 80
+      shell: |
+        if ! sudo netstat -tuln | grep -q ':80'; then
+          echo "NGINX is not listening on port 80. Restarting NGINX..."
+          sudo systemctl restart nginx
+        fi
+      register: nginx_port_check
+      changed_when: nginx_port_check.rc != 0
+
+    - name: Display NGINX status
+      debug:
+        msg: "NGINX is running and listening on port 80."
+      when: nginx_port_check.rc == 0
