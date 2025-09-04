@@ -1,0 +1,29 @@
+---
+- name: Configure inet Router2
+  hosts: inetRouter2
+  become: yes
+  tasks:
+     - name: Install iptables-persistent
+       apt:
+         name: iptables-persistent
+         state: present
+
+     - name: Copy ipv4 rules
+       ansible.builtin.template:
+           src:  "{{ item.src }}"
+           dest: "{{ item.dest }}"
+           owner: root
+           group: root
+           mode: "{{ item.mode }}"
+       with_items:
+          - {src: "inetRouter2/rules.v4", dest: "/etc/iptables/rules.ipv4", mode: "0644"}
+
+     - name: restore firewall rules
+       shell: |
+         sudo iptables-restore < /etc/iptables/rules.v4
+
+     - name: Setup package forwarding
+       sysctl:
+          name: net.ipv4.ip_forward
+          value: '1'
+          state: present

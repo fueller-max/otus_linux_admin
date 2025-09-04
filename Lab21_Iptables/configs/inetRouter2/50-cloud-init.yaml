@@ -1,0 +1,19 @@
+network:
+    ethernets:
+        ens3:
+            dhcp4: false
+            addresses: [192.168.20.202/24] # to external network(Home VLAN 192.168.20.0/24)
+            routes:
+            - to: 0.0.0.0/0
+              via: 192.168.20.1
+            nameservers:
+              addresses: [8.8.8.8]
+        ens4:
+            dhcp4: false
+            addresses: [192.168.255.14/30]
+            routes:
+            - to: 192.168.0.0/16 #internal hosts
+              via: 192.168.255.13
+            - to: 172.12.50.0/24 #Ansible network
+              via: 192.168.255.13
+    version: 2
