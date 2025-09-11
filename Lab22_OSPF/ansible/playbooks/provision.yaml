@@ -1,0 +1,16 @@
+---
+- name: Make provisionig of all routers
+  hosts: routers
+  become: yes
+  vars_files:
+    - defaults/main.yml
+  tasks:
+  - name: install base tools   # Update package and install vim, traceroute, tcpdump, net-tools
+    apt:
+      name:
+        - vim
+        - traceroute
+        - tcpdump
+        - net-tools
+      state: present
+      update_cache: true
