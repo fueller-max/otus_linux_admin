@@ -1,0 +1,40 @@
+---
+- name: Setup WEB Server
+  hosts: pxeserver
+  become: yes
+
+  tasks:
+  - name: Install Apache2
+    apt: 
+     name: apache2
+     state: present
+
+  - name: Create directory /srv/images
+    file:
+        path: /srv/images
+        state: directory
+        mode: 0755
+
+  - name: Download the Ubuntu 24.04 iso-image
+    get_url:
+        url: https://cdimage.ubuntu.com/ubuntu-server/noble/daily-live/current/noble-live-server-amd64.iso
+        dest: /srv/images
+
+  - name: copy config file for virtual host
+    template:
+        src: ks-server.conf
+        dest:  /etc/apache2/sites-available/ks-server.conf
+        mode: 0640
+
+  - name: Enable ks-server.conf site
+    command: a2ensite ks-server.conf
+    register: enable_site_result
+
+  - name: copy config file /srv/tftp/amd64/pxelinux.cfg/default
+    template:
+        src: default
+        dest:  /srv/tftp/amd64/pxelinux.cfg/default
+        mode: 0644
+
+  - name: Reload Apache to apply changes
+    command: systemctl reload apache2

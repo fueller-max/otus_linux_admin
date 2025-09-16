@@ -1,0 +1,48 @@
+---
+- name: Configure PXE for Ubuntu autoinstall
+  hosts: pxeserver
+  become: yes
+
+  tasks:
+  - name: Create directory /srv/ks
+    file:
+        path: /srv/ks
+        state: directory
+        mode: 0755
+  
+  - name: copy cloud-config  file
+    template:
+        src: autoinstall/user-data
+        dest: /srv/ks
+        mode: 0644
+
+  - name: Create file with meta data
+    file:
+        path: /srv/ks/meta-data
+        state: touch
+        mode: 0644
+  
+  - name: copy config file /srv/tftp/amd64/pxelinux.cfg/default
+    template:
+        src: autoinstall/default_auto_install
+        dest:  /srv/tftp/amd64/pxelinux.cfg/default
+        mode: 0644      
+  
+  - name: copy config file for virtual host
+    template:
+        src: autoinstall/ks-server_auto_install.conf
+        dest:  /etc/apache2/sites-available/ks-server.conf
+        mode: 0644 
+  
+  - name: Restart dnsmasq service
+    systemd:
+        name: dnsmasq
+        state: restarted    
+
+  - name: Reload Apache to apply changes
+    command: systemctl reload apache2 
+
+  - name: Restart Apache
+    systemd:
+        name: apache2
+        state: restarted                       
