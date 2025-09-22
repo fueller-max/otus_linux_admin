@@ -1,0 +1,6 @@
+[servers]
+vpn_server ansible_host=192.168.20.208 ansible_port=22 ansible_private_key_file=~/.ssh/id_rsa
+[clients]
+vpn_client ansible_host=192.168.20.209 ansible_port=22 ansible_private_key_file=~/.ssh/id_rsa
+[ras_servers]
+ras_server ansible_host=192.168.20.205 ansible_port=22 ansible_private_key_file=~/.ssh/id_rsa

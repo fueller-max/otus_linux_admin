@@ -1,0 +1,50 @@
+---
+- name: Basic setup of VPN server using PKI
+  hosts: ras_server 
+  become: yes
+
+  tasks:
+  - name: Update package list
+    apt:
+       update_cache: yes
+
+  - name: Install openvpn, easy-rsa
+    apt:
+        name:
+          - openvpn
+          - easy-rsa
+        state: present
+
+  - name: Change directory to /etc/openvpn and initialize PKI
+    shell: |
+        cd /etc/openvpn
+        /usr/share/easy-rsa/easyrsa init-pki
+    args:
+        chdir: /etc/openvpn  # Change directory to /etc/openvpn 
+
+  - name: Generate a request for the server certificate
+    shell: |
+        echo 'rasvpn' | /usr/share/easy-rsa/easyrsa gen-req server nopass
+
+  - name: Create  Certificate Authority. 
+    shell: |
+        /usr/share/easy-rsa/easyrsa build-ca   
+
+  - name: Sign the server certificate request
+    shell: |
+        echo 'yes' | /usr/share/easy-rsa/easyrsa sign-req server server
+    
+  - name: Generate Diffie-Hellman parameters
+    shell: /usr/share/easy-rsa/easyrsa gen-dh
+          
+  - name: Generate a secret key for the CA
+    shell: openvpn --genkey secret ca.key
+    
+  - name: Generate a request for the client certificate
+    shell: |
+        echo 'client' | /usr/share/easy-rsa/easyrsa gen-req client nopass
+    
+  - name: Sign the client certificate request
+    shell: |
+        echo 'yes' | /usr/share/easy-rsa/easyrsa sign-req client client
+    

@@ -1,0 +1,29 @@
+---
+- name: Setup OpenVPN on client
+  hosts: vpn_client
+  become: yes
+  
+  tasks:
+
+  - name: Ensure the OpenVPN directory exists
+    file:
+      path: /etc/openvpn
+      state: directory
+  
+  - name: copy client.conf file
+    template:
+        src: client/client.conf
+        dest: /etc/openvpn/
+        mode: 0644 
+
+  - name: copy service unit file file
+    template:
+        src: client/openvpn@client
+        dest: /etc/systemd/system/
+        mode: 0644 
+
+  - name: Start OpenVPN service
+    systemd:
+        name: openvpn@client
+        state: started
+        enabled: yes 

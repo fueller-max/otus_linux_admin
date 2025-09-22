@@ -1,0 +1,32 @@
+---
+- name: Setup RAS server using openVPN
+  hosts: ras_server
+  become: yes
+  
+  tasks:
+  - name: Ensure the OpenVPN directory exists
+    file:
+      path: /etc/openvpn
+      state: directory
+
+  - name: copy server_ras.conf file
+    template:
+        src: RAS/server_ras.conf
+        dest: /etc/openvpn/server.conf
+        mode: 0644 
+  
+  - name: copy service unit file
+    template:
+        src: RAS/openvpn@server
+        dest: /etc/systemd/system/
+        mode: 0644 
+  
+  - name: Set ip route for a client
+    shell: |
+        echo 'iroute 10.10.11.0 255.255.255.0' > /etc/openvpn/client/client
+
+  - name: Restart OpenVPN service
+    systemd:
+        name: openvpn@server
+        state: restarted
+        enabled: yes 

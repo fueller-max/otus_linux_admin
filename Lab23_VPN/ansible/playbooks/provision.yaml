@@ -1,0 +1,17 @@
+---
+- name: Basic setup of VPN server/client
+  hosts: vpn_server 
+  become: yes
+
+  tasks:
+
+  - name: Update package list
+    apt:
+       update_cache: yes
+
+  - name: Install openvpn, iperf3
+    apt:
+        name:
+          - openvpn
+          - iperf3
+        state: present

@@ -1,0 +1,36 @@
+---
+- name: Setup OpenVPN on server
+  hosts: vpn_server
+  become: yes
+  
+  tasks:
+
+  - name: Ensure the OpenVPN directory exists
+    file:
+      path: /etc/openvpn
+      state: directory
+
+  - name: Generate OpenVPN  secret key
+    command: openvpn --genkey secret static.key
+    register: key_generation_result    
+  
+  - name: copy secret key file
+    command: cp static.key /etc/openvpn/
+  
+  - name: copy server.conf file
+    template:
+        src: server/server.conf
+        dest: /etc/openvpn/
+        mode: 0644 
+
+  - name: copy service unit file file
+    template:
+        src: server/openvpn@server
+        dest: /etc/systemd/system/
+        mode: 0644 
+
+  - name: Start OpenVPN service
+    systemd:
+        name: openvpn@server
+        state: started
+        enabled: yes                   
