@@ -1,0 +1,20 @@
+---
+- name: Basic setup of DNS system 
+  hosts: servers
+  become: yes
+  tasks:
+  - name: Install bind, bind-uitls
+    apt:
+        name:
+          - bind9
+          - bind9-utils
+        state: present
+        update_cache: yes
+
+  - name: Copy named.zonetransfer.key 
+    copy:
+      src: named.zonetransfer.key
+      dest: /etc/bind/named.zonetransfer.key
+      owner: bind
+      group: bind
+      mode: 0644

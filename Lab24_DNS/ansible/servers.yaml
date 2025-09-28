@@ -1,0 +1,80 @@
+---
+- name: Setup of ns01 (name server 1)
+  hosts: ns01
+  become: yes
+  tasks:
+  - name: Copy named.conf 
+    copy:
+      src: master-named.conf
+      dest: /etc/bind/named.conf
+      owner: user
+      group: bind
+      mode: 0644
+      
+  - name: Copy zones 
+    copy:
+      src: "{{ item }}"
+      dest: /etc/bind/
+      owner: user
+      group: bind
+      mode: 0644
+    loop: "{{ query('ansible.builtin.fileglob', 'named.d*') }}"
+
+  - name: Copy resolv.conf 
+    template:
+      src: servers-resolv.conf.j2
+      dest: /etc/resolv.conf
+      owner: user
+      group: bind
+      mode: 0644 
+
+  - name: set /etc/bind permissions
+    file: 
+     path: /etc/bind
+     state: directory
+     owner: user
+     group: bind 
+     mode: 0755 
+     recurse: yes 
+
+  - name: ensure named is running and enabled
+    service:
+     name: bind9 
+     state: restarted 
+     enabled: yes     
+
+- name: Setup of ns02 (name server 2)
+  hosts: ns02
+  become: yes
+  tasks:
+ 
+  - name: Copy named.conf 
+    copy:
+      src: slave-named.conf
+      dest: /etc/bind/named.conf
+      owner: user
+      group: bind
+      mode: 0644
+
+  - name: Copy resolv.conf 
+    template:
+      src: servers-resolv.conf.j2
+      dest: /etc/resolv.conf
+      owner: user
+      group: bind
+      mode: 0644 
+
+  - name: set /etc/bind permissions
+    file: 
+     path: /etc/bind
+     state: directory
+     owner: user
+     group: bind 
+     mode: 0755 
+     recurse: yes 
+
+  - name: ensure named is running and enabled
+    service:
+     name: bind9 
+     state: restarted 
+     enabled: yes    

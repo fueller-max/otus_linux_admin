@@ -1,0 +1,26 @@
+- hosts: client1,client2 
+  become: yes 
+  tasks: 
+  - name: copy resolv.conf to the client 
+    copy: 
+      src: client-resolv.conf 
+      dest: /etc/resolv.conf 
+      owner: root
+      group: root 
+      mode: 0644
+
+  - name: copy rndc conf file
+    copy: 
+      src: rndc.conf 
+      dest: /home/user/rndc.conf 
+      owner: root 
+      group: root 
+      mode: 0644
+
+  - name: copy motd to the client 
+    copy: 
+      src: client-motd 
+      dest: /etc/motd 
+      owner: root 
+      group: root 
+      mode: 0644  
