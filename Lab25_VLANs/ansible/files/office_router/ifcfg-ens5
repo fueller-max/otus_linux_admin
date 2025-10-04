@@ -1,0 +1,6 @@
+DEVICE=ens5
+TYPE=Ethernet
+BOOTPROTO=none
+ONBOOT=yes
+MASTER=br0
+SLAVE=yes

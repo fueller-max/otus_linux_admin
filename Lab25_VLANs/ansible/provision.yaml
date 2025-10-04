@@ -1,0 +1,25 @@
+---
+- name: Base set up 
+  hosts: all
+  become: yes 
+  tasks: 
+  #install neccessary pacakges for RedHat-based hosts 
+  - name: install software on CentOS 
+    yum: 
+      name:
+       - traceroute
+       - tcpdump 
+       - net-tools 
+      state: present 
+      update_cache: true 
+    when: (ansible_os_family == "RedHat")
+   #install neccessary pacakges for Debian-based hosts
+  - name: install software on Debian-based 
+    apt: 
+      name: 
+        - traceroute 
+        - tcpdump 
+        - net-tools 
+      state: present 
+      update_cache: true 
+    when: (ansible_os_family == "Debian")

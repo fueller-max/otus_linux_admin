@@ -1,0 +1,16 @@
+- name: Setup vlan2 on testClient2 and testServer2 
+  hosts: testClient2,testServer2 
+  become: yes 
+  tasks: 
+  #/etc/sysconfig/network-scripts/ifcfg-vlan1 
+  - name: set up vlan1 
+    template: 
+      src: 50-cloud-init.yaml.j2 
+      dest: /etc/netplan/50-cloud-init.yaml 
+      owner: root 
+      group: root 
+      mode: 0644 
+
+  - name: apply set up vlan2  
+    shell: netplan apply 
+    become: true

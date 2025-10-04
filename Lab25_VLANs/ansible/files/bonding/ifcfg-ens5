@@ -1,0 +1,7 @@
+DEVICE=ens5     # Physical inetrface
+ONBOOT=yes      # Switch on  the interface during boot 
+BOOTPROTO=none  # No DHCP 
+MASTER=bond0    # Interface belongs to bond-interface
+SLAVE=yes       #Interface is a slave in bond
+NM_CONTROLLED=yes 
+USERCTL=no

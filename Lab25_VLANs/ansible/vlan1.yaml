@@ -1,0 +1,53 @@
+---
+- name: Setup br0 and vlan1 on office Router 
+  hosts: officeRouter
+  become: yes 
+  tasks: 
+  #/etc/sysconfig/network-scripts/ifcfg-br0
+  - name: set up br0 
+    copy: 
+      src: office_router/ifcfg-br0
+      dest: /etc/sysconfig/network-scripts/ifcfg-br0
+      owner: root 
+      group: root 
+      mode: 0644 
+   #/etc/sysconfig/network-scripts/ifcfg-ens5
+  - name: set up ens5 
+    copy: 
+      src: office_router/ifcfg-ens5
+      dest: /etc/sysconfig/network-scripts/ifcfg-ens5
+      owner: root 
+      group: root 
+      mode: 0644
+   #/etc/sysconfig/network-scripts/ifcfg-ens6
+  - name: set up ens6
+    copy: 
+      src: office_router/ifcfg-ens6
+      dest: /etc/sysconfig/network-scripts/ifcfg-ens6
+      owner: root 
+      group: root 
+      mode: 0644    
+
+  #Restart NetworkManager 
+  - name: restart network for vlan1 
+    service: 
+      name: NetworkManager 
+      state: restarted
+
+- name: Setup vlan1 on testClient1 and testServer1 
+  hosts: testClient1,testServer1 
+  become: yes 
+  tasks: 
+  #/etc/sysconfig/network-scripts/ifcfg-vlan1 
+  - name: set up vlan1 
+    template: 
+      src: ifcfg-vlan1.j2 
+      dest: /etc/sysconfig/network-scripts/ifcfg-vlan1 
+      owner: root 
+      group: root 
+      mode: 0644 
+  #Restart NetworkManager 
+  - name: restart network for vlan1 
+    service: 
+      name: NetworkManager 
+      state: restarted
