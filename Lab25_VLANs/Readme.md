@@ -86,7 +86,7 @@ testServer1 ansible_host=192.168.20.219 ansible_port=22 ansible_private_key_file
 testServer2 ansible_host=192.168.20.221 ansible_port=22 ansible_private_key_file=~/.ssh/id_rsa vlan_id=2 vlan_ip=10.10.20.1
 ````
 
-На хосте officeRouter для организации связности между портами создадим мост br0, куда включим порты, подключим фильтрацию по номеру Vlan: 
+На хосте officeRouter для организации связности между портами создадим мост br0, куда включим порты, вхдящие в VLAN1. Подключим фильтрацию по номеру Vlan: 
 
 
 ```bash
@@ -129,7 +129,7 @@ SLAVE=yes
 
 Запускаем плейбуки (все плейбуки находятся в папке ansible) и далее проверяем работу системы:
 
-* На хосте testClient1 проверем наличие sub-интрфейса для Vlan1 ens4.1@ens4:
+* На хосте testClient1 проверим наличие sub-интрфейса для Vlan1 ens4.1@ens4:
 ````bash
 [user@testClient1 ~]$ ip a
 4: ens4.1@ens4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
@@ -140,7 +140,7 @@ SLAVE=yes
        valid_lft forever preferred_lft forever
 ````
 
-* На хосте testServer1 проверем наличие sub-интрфейса для Vlan1 ens4.1@ens4:
+* На хосте testServer1 проверим наличие sub-интрфейса для Vlan1 ens4.1@ens4:
 ```bash
 [user@testServer1 ~]$ ip a
 4: ens4.1@ens4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
@@ -247,7 +247,7 @@ PING 10.10.20.1 (10.10.20.1) 56(84) bytes of data.
 ````
 
 
-В данной схеме мы настроили порты на хостах для работы в режиме tagged (или trunk по терминологии Cisco), т.е. трафик из порта будет выходит тегированным. Это можно проверить, посмотрев дамп трафика на порту ens5, который подключен к хосту testClient1:
+В данной схеме мы настроили порты на хостах для работы в режиме tagged (или trunk по терминологии Cisco), т.е. трафик из порта будет выходит тегированным. Это можно проверить, посмотрев дамп трафика на порту ens5 officeRouter, который подключен к хосту testClient1:
 
 ```bash
 [user@officeRouter ~]$ sudo tcpdump -i ens5 -vvv ip -xX -e
@@ -258,9 +258,9 @@ tcpdump: listening on ens5, link-type EN10MB (Ethernet), snapshot length 262144 
         0x0000:  4500 0054 1f84 0000 4001 32ad 0a0a 0a64  E..T....@.2....d
         0x0010:  0a0a 0a01 0000 9071 0002 0071 a301 e168  .......q...q...h 
 ```
-Видим, что в заголовке присутсвует запись "ethertype 802.1Q", а также номер VLAN: vlan 1. 
+Видим, что в заголовке присутствует запись "ethertype 802.1Q", а также номер VLAN: 1. 
 
-Обычно для конечных хостов порты настраиваются untagged (или access по терминологии Cisco), т.е. не имеющими метки Vlan. А тегированный трафик настраивается на портах, где подразумевается хождение трафик из нескольких виланов (например путь свитч - роутер или сервера, к которому должен быть дотсуп из разных виланов).
+Обычно для конечных хостов порты настраиваются untagged (или access по терминологии Cisco), т.е. не имеющими метки Vlan. А тегированный трафик настраивается на портах, где подразумевается хождение трафика из нескольких виланов (например путь свитч - роутер или сервера, к которому должен быть доступ из разных виланов).
 
 
 #### 2. Настройка Bonding
@@ -311,11 +311,11 @@ USERCTL=no
 ```bash
 BONDING_OPTS="mode=1 miimon=100 fail_over_mac=1"
 ```
-mode 1: active-backup означает один активный порт, другой в резерве (без балансировки),
-miimon=100: 100 мс время опроса состояния порта
-fail_over_mac=1 используется MAC активного slave.
+* mode 1: active-backup означает один активный порт, другой в резерве (без балансировки),
+* miimon=100: 100 мс время опроса состояния порта
+* fail_over_mac=1 используется MAC активного slave.
 
-После настройки ansibleом, проверяем связность между ротуерами:
+После настройки ansible`ом, проверяем связность между ротуерами:
 
 ```bash
 [user@centralRouter ~]$ ping 192.168.255.1
@@ -325,7 +325,7 @@ PING 192.168.255.1 (192.168.255.1) 56(84) bytes of data.
 64 bytes from 192.168.255.1: icmp_seq=3 ttl=64 time=1.32 ms
 ```
 
-Проверяем через какой интерфейс(ens4, ens5) реально проходит трафик:
+Проверяем через какой интерфейс(ens4, ens5) реально проходит трафик на inetRouter:
 
 ```bash
 [user@inetRouter ~]$ sudo tcpdump -i ens4
@@ -343,7 +343,6 @@ dropped privs to tcpdump
 tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
 listening on ens5, link-type EN10MB (Ethernet), snapshot length 262144 bytes
 ```
-
 Видим, что трафик проходит через ens4, а ens5 находится в режиме горячего резерва.
 
 Имитируем отказ интерфейса ens4:
