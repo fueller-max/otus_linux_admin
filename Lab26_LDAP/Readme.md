@@ -17,7 +17,7 @@
 
 <https://www.freeipa.org/page/Quick_Start_Guide>
 
-* Устанвливаем hostname на машине сервера
+* Устанвливаем hostname на машине сервера server.ipa.test
 
 ```bash
 [master@localhost ~]$ hostnamectl set-hostname server.ipa.test
@@ -30,13 +30,13 @@
 192.168.153.164 server.ipa.test server
 ```
 
-Данные шаги крайне важны для корректной работы системы FreeIPA. т.к. Kerberos и SSL службы не будут работать без рабочей DNS конфигурации.
+Шаги по настройке DNS крайне важны для корректной работы системы FreeIPA. т.к. Kerberos и SSL службы не будут работать без рабочей DNS конфигурации.
 
 * Добавляем сервис FreeIPA в правила firewalld:
   
 ```bash
-[master@server ~]$ firewall-cmd --add-service=freeipa-4 --add-service=freeipa-ldaps
-[master@server ~]$ firewall-cmd --add-service=freeipa-4 --add-service=freeipa-ldaps --permanent
+[master@server ~]$ firewall-cmd --add-service=freeipa-4 
+[master@server ~]$ firewall-cmd --add-service=freeipa-4  --permanent
 ```
 
 * Переводим SELinux в отключенное состояние(также вносим изменение в параметры ядра для постоянного отключения SELinux )
