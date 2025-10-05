@@ -1,0 +1,45 @@
+- name: Setup of IPA clients 
+  hosts: client1.ipa.test
+  become: yes 
+  tasks:
+  
+  - name: disable firewalld 
+    service: 
+     name: firewalld 
+     state: stopped 
+     enabled: false  
+
+  - name: disable SElinux 
+    selinux: 
+     state: disabled 
+
+  - name: disable SElinux now
+    shell: setenforce 0
+
+  - name: Set up timezone 
+    timezone: 
+     name: "Europe/Moscow" 
+
+  - name: enable chrony 
+    service:
+     name: chronyd 
+     state: restarted 
+     enabled: true      
+
+  - name: change /etc/hosts 
+    copy:
+     src: hosts 
+     dest: /etc/hosts 
+     owner: root 
+     group: root 
+     mode: 0644
+
+  - name: install module ipa-client 
+    yum: 
+     name: 
+       - freeipa-client 
+     state: present 
+     update_cache: true
+
+  - name: add host to ipa-server
+    shell: echo -e "yes\nyes" | ipa-client-install --mkhomedir --domain=IPA.TEST --server=server.ipa.test --no-ntp -p admin -w OrmENagE   
