@@ -218,3 +218,123 @@ Oct 12 13:44:33 localhost.localdomain systemd[1]: Started The nginx HTTP and rev
   
 ![nginx](/Lab06_RPM_Repo/pics/Nginx.PNG)
 
+#### 2. Создание своего репозитория и размещение там ранее собранного RPM
+
+* Проверяем директорию для статики у nginx:
+
+```bash
+[root@localhost /]# ll /usr/share/nginx/html
+total 12
+-rw-r--r--. 1 root root 3971 Jun 19 12:37 404.html
+-rw-r--r--. 1 root root 4020 Jun 19 12:37 50x.html
+drwxr-xr-x. 2 root root   27 Oct 12 13:44 icons
+lrwxrwxrwx. 1 root root   25 Oct 12 13:39 index.html -> ../../testpage/index.html
+-rw-r--r--. 1 root root  368 Jun 19 12:37 nginx-logo.png
+lrwxrwxrwx. 1 root root   14 Oct 12 13:39 poweredby.png -> nginx-logo.png
+lrwxrwxrwx. 1 root root   37 Oct 12 13:39 system_noindex_logo.png -> ../../pixmaps/system-noindex-logo.png
+[root@localhost /]#
+```
+
+* Там же создадим каталог repo:
+  
+ ````bash
+ [root@localhost /]# mkdir /usr/share/nginx/html/repo
+ ````
+
+* Копируем туда все ранее созданные rpm пакеты:
+  
+ ````bash
+ [root@localhost /]# cp ~/rpmbuild/RPMS/x86_64/*.rpm /usr/share/nginx/html/repo/
+ ````
+
+* Инциализируем репозиторий:
+  
+```bash
+[root@localhost /]# createrepo /usr/share/nginx/html/repo/
+Directory walk started
+Directory walk done - 10 packages
+Temporary output repo path: /usr/share/nginx/html/repo/.repodata/
+Preparing sqlite DBs
+Pool started (with 5 workers)
+Pool finished
+```
+
+* В Nginx доступ к листингу каталога. В файле /etc/nginx/nginx.conf в блоке server добавим следующие директивы:
+  
+```bash
+ server {
+        
+        index index.html index.htm;
+        autoindex on;
+    }
+
+```
+
+* Проверяем синтаксис конфига:
+  
+```bash
+[root@localhost /]#  nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+```
+
+* Перезапускаем nginx и проверяем доступ к репозиторию через nginx:
+  
+```bash
+[root@localhost /]# nginx -s reload
+```
+
+![repo](/Lab06_RPM_Repo/pics/Nginx_repo.PNG)
+
+* Добавим созданный репозиторий в /etc/yum.repos.d:
+  
+```bash
+[root@localhost /]# cat >> /etc/yum.repos.d/otus.repo << EOF
+[otus]
+name=otus-linux
+baseurl=http://localhost/repo
+gpgcheck=0
+enabled=1
+EOF
+```
+
+* Убедимся, что репозиторий подключился:
+
+```bash
+[root@localhost /]#  yum repolist enabled | grep otus
+otus                          otus-linux
+```
+
+* Добавим еще пакет в созданный репозиторий:
+
+```bash
+[root@localhost /]# cd /usr/share/nginx/html/repo/
+[root@localhost repo]# wget https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+--2025-10-12 14:46:45--  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+Resolving repo.percona.com (repo.percona.com)... 49.12.125.205, 2a01:4f8:242:5792::2
+Connecting to repo.percona.com (repo.percona.com)|49.12.125.205|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 28532 (28K) [application/x-redhat-package-manager]
+Saving to: ‘percona-release-latest.noarch.rpm.1’
+
+percona-release-latest.noarch.rpm.1     100%[===============================================================================>]  27.86K  --.-KB/s    in 0.007s
+
+2025-10-12 14:46:52 (3.66 MB/s) - ‘percona-release-latest.noarch.rpm.1’ saved [28532/28532]
+```
+
+* Обновляем список пакетов в репозитории:
+  
+```bash
+[root@localhost repo]# createrepo /usr/share/nginx/html/repo/
+[root@localhost repo]# yum makecache
+```
+
+* Убеждаемся, что пакет появился в нашем репозитории:
+
+````bash
+[root@localhost repo]# yum list | grep otus
+percona-release.noarch                                1.0-32                               otus
+```
+
+
+
