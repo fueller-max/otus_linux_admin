@@ -1,95 +1,220 @@
-### Размещаем свой RPM в своем репозитории
+# Размещаем свой RPM в своем репозитории
 
-### Цель:
+## Цель
 
 Научиться собирать кастомный RPM пакет и размещать его в созданном репозитории
 
-###  Задание:
+### Задание
 
-1. Создать свой RPM пакет (можно взять свое приложение, либо собрать, например, 
-Apache с определенными опциями). 
+1. Создать свой RPM пакет (можно взять свое приложение, либо собрать, например, Apache с определенными опциями).
 2. Создать свой репозиторий и разместить там ранее собранный RPM.
 
+### Решение
 
-### Решение:
-
-1. Создание своего RPM пакета-  Nginx с опцией -http_v3_module - поддержка HTTP3/QUIC. 
-
+#### 1. Создание своего RPM пакета (Nginx с дополнительным модулем ngx_broli)
 
 * Устанавливаем Development Tool(компилятор, линкер и пр...) необходимые для сборки:
-`````
-[otus@localhost ~]$ sudo yum groupinstall "Development Tools"
+  
+`````bash
+[root@localhost master]# yum install -y wget rpmdevtools rpm-build createrepo yum-utils cmake gcc git nano
 
 `````
 
-* Скачиваем исходный код Nginx c сервера:
-`````
-[otus@localhost ~]$ wget http://nginx.org/download/nginx-1.27.1.tar.gz
+Результат установки:
 
-`````
+````bash
+Installed:
+  annobin-12.98-1.el9.x86_64           cmake-3.26.5-2.el9.x86_64               cmake-data-3.26.5-2.el9.noarch        cmake-filesystem-3.26.5-2.el9.x86_64
+  cmake-rpm-macros-3.26.5-2.el9.noarch createrepo_c-0.20.1-4.el9.x86_64        createrepo_c-libs-0.20.1-4.el9.x86_64 debugedit-5.0-11.el9.x86_64
+  dwz-0.16-1.el9.x86_64                efi-srpm-macros-6-4.el9.noarch          elfutils-0.193-1.el9.x86_64           fonts-srpm-macros-1:2.0.5-7.el9.1.noarch
+  gcc-11.5.0-11.el9.x86_64             gcc-plugin-annobin-11.5.0-11.el9.x86_64 gdb-minimal-16.3-2.el9.x86_64         ghc-srpm-macros-1.5.0-6.el9.noarch
+  git-2.47.3-1.el9.x86_64              git-core-2.47.3-1.el9.x86_64            git-core-doc-2.47.3-1.el9.noarch      glibc-devel-2.34-232.el9.x86_64
+  glibc-headers-2.34-232.el9.x86_64    go-srpm-macros-3.8.1-1.el9.noarch       kernel-headers-5.14.0-621.el9.x86_64  kernel-srpm-macros-1.0-14.el9.noarch
+  libxcrypt-devel-4.4.18-3.el9.x86_64  lua-srpm-macros-1-6.el9.noarch          make-1:4.3-8.el9.x86_64               ocaml-srpm-macros-6-6.el9.noarch
+  openblas-srpm-macros-2-11.el9.noarch patch-2.7.6-16.el9.x86_64               perl-Error-1:0.17029-7.el9.noarch     perl-Git-2.47.3-1.el9.noarch
+  perl-TermReadKey-2.38-11.el9.x86_64  perl-lib-0.65-483.el9.x86_64            perl-srpm-macros-1-41.el9.noarch      pyproject-srpm-macros-1.16.2-1.el9.noarch
+  python-srpm-macros-3.9-54.el9.noarch python3-argcomplete-1.12.0-5.el9.noarch qt5-srpm-macros-5.15.9-1.el9.noarch   redhat-rpm-config-210-1.el9.noarch
+  rpm-build-4.16.1.3-39.el9.x86_64     rpmdevtools-9.5-1.el9.noarch            rust-srpm-macros-17-4.el9.noarch      yum-utils-4.3.0-23.el9.noarch
+  zstd-1.5.5-1.el9.x86_64
 
-* Распаковываем скачанный архив:
-````
-[otus@localhost ~]$ tar -xzf nginx-1.27.1.tar.gz
-
-[otus@localhost ~]$ cd nginx-1.27.1
-
-````
-
-* The build is configured using the configure command. It defines various aspects of the system, including the methods nginx is allowed to use for connection processing. At the end it creates a Makefile.
-````
-[otus@localhost nginx-1.27.1]$ ./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/run/nginx.lock --http-client-body-temp-path=/var/cache/nginx/client_temp --http-proxy-temp-path=/var/cache/nginx/proxy_temp --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp --http-scgi-temp-path=/var/cache/nginx/scgi_temp --with-http_ssl_module --with-http_realip_module --with-http_addition_module --with-http_sub_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_random_index_module --with-http_secure_link_module --with-http_stub_status_module --with-threads --with-stream --with-stream_ssl_module --with-http_v3_module
-````
-
-
-````
-Configuration summary
-  + using threads
-  + using system PCRE library
-  + using system OpenSSL library
-  + using system zlib library
-
-  nginx path prefix: "/etc/nginx"
-  nginx binary file: "/usr/sbin/nginx"
-  nginx modules path: "/usr/lib64/nginx/modules"
-  nginx configuration prefix: "/etc/nginx"
-  nginx configuration file: "/etc/nginx/nginx.conf"
-  nginx pid file: "/var/run/nginx.pid"
-  nginx error log file: "/var/log/nginx/error.log"
-  nginx http access log file: "/var/log/nginx/access.log"
-  nginx http client request body temporary files: "/var/cache/nginx/client_temp"
-  nginx http proxy temporary files: "/var/cache/nginx/proxy_temp"
-  nginx http fastcgi temporary files: "/var/cache/nginx/fastcgi_temp"
-  nginx http uwsgi temporary files: "/var/cache/nginx/uwsgi_temp"
-  nginx http scgi temporary files: "/var/cache/nginx/scgi_temp"
-
+Complete!
 ````
 
+* Загрузим SRPM пакет Nginx для дальнейшей работы над ним
+  
+````bash
+[root@localhost ~]# mkdir rpm && cd rpm
+[root@localhost ~]]# yumdownloader --source nginx
+````
 
+Результат загрузки:
 
+```bash
+[root@localhost ~]# ll
+total 1092
+-rw-r--r--. 1 root root 1117721 Oct 12 13:04 nginx-1.20.1-24.el9.src.rpm
+```
 
-################################################################################3
+* Поставим все зависимости для сборки пакета Nginx и создадим дерево каталогов для сборки
+  
+```bash
+[root@localhost ~]$ sudo rpm -Uvh nginx*.src.rpm
+[root@localhost ~]# yum-builddep nginx
+```
 
-`````
-[otus@localhost rpm]$ rpmdev-setuptree
+ Дерево rpmbuild директории:
 
-`````
-
-
-`````
-[otus@localhost rpmbuild]$ ll
-total 0
-drwxr-xr-x. 2 otus otus 6 Jun  3 18:56 BUILD
-drwxr-xr-x. 2 otus otus 6 Jun  3 18:56 RPMS
-drwxr-xr-x. 2 otus otus 6 Jun  3 18:56 SOURCES
-drwxr-xr-x. 2 otus otus 6 Jun  3 18:56 SPECS
-drwxr-xr-x. 2 otus otus 6 Jun  3 18:56 SRPMS
-`````
+````bash
+[root@localhost ~]# ll rpmbuild
+total 4
+drwxr-xr-x. 2 root root 4096 Oct 12 13:05 SOURCES
+drwxr-xr-x. 2 root root   24 Oct 12 13:05 SPECS
 
 ````
-[otus@localhost rpmbuild]$ rpmdev-newspec rpmbuild/SPECS/pg_redis_pubsub.spec
-/usr/bin/rpmdev-newspec: line 302: rpmbuild/SPECS/pg_redis_pubsub.spec: No such file or directory
-rpmbuild/SPECS/pg_redis_pubsub.spec created; type minimal, rpm version >= 4.16.
+
+* Cкачиваем исходный код модуля ngx_brotli, который потребуется при сборке:
+
+```bash
+[root@localhost ~]# git clone --recurse-submodules -j8 https://github.com/google/ngx_brotli
+```
+
+```bash
+Receiving objects: 100% (8668/8668), 45.64 MiB | 62.00 KiB/s, done.
+Resolving deltas: 100% (5558/5558), done.
+Submodule path 'deps/brotli': checked out 'ed738e842d2fbdf2d6459e39267a633c4a9b2f5d'
+```
+
+* Переходим в директорию ngx_brotli/deps/brotli и создаем директорию out
+  
+```bash
+[root@localhost ~]# cd ngx_brotli/deps/brotli
+[root@localhost brotli]# mkdir out && cd out
+```
+
+* Собираем модуль, используя cmake
+  
+````bash
+[root@localhost out]# cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" -DCMAKE_CXX_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" -DCMAKE_INSTALL_PREFIX=./installed ..
+````
+
+````bash
+[root@localhost out]# cmake --build . --config Release -j 2 --target brotlienc
+````
+
+* Сборка модуля завершена успешно:
+
+```bash
+-- Configuring done (1.5s)
+-- Generating done (0.0s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_CXX_FLAGS
+
+-- Build files have been written to: /home/otus/rpm/ngx_brotli/deps/brotli/out
+```
+
+* Правим spec файл, чтобы Nginx собирался с необходимой опцией: в секцию с параметрами configure добавляем указание на модуль--add-module=/root/ngx_brotli \
+
+```bash
+[root@localhost SPECS]# vi nginx.spec
+```
+
+````bash
+if ! ./configure \
+    
+    --add-module=/root/ngx_brotli \
 
 ````
+
+* Запускаем сборку кастомного rpm модуля nginx c включенным модулем brotli:
+  
+````bash
+[root@localhost SPEC] rpmbuild -ba nginx.spec -D 'debug_package %{nil}'
+````
+
+* Сборка заверешена успешно:
+  
+````bash
+Executing(%clean): /bin/sh -e /var/tmp/rpm-tmp.nVGWBi
++ umask 022
++ cd /root/rpmbuild/BUILD
++ cd nginx-1.20.1
++ /usr/bin/rm -rf /root/rpmbuild/BUILDROOT/nginx-1.20.1-24.el9.x86_64
++ RPM_EC=0
+++ jobs -p
++ exit 0
+````
+
+* Проверяем собраннные пакеты в папке RPMS/x86_64/:
+  
+````bash
+[root@localhost rpmbuild]# ll RPMS/x86_64/
+total 1996
+-rw-r--r--. 1 root root   36787 Oct 12 13:39 nginx-1.20.1-24.el9.x86_64.rpm
+-rw-r--r--. 1 root root 1029698 Oct 12 13:39 nginx-core-1.20.1-24.el9.x86_64.rpm
+-rw-r--r--. 1 root root  759075 Oct 12 13:39 nginx-mod-devel-1.20.1-24.el9.x86_64.rpm
+-rw-r--r--. 1 root root   19882 Oct 12 13:39 nginx-mod-http-image-filter-1.20.1-24.el9.x86_64.rpm
+-rw-r--r--. 1 root root   31449 Oct 12 13:39 nginx-mod-http-perl-1.20.1-24.el9.x86_64.rpm
+-rw-r--r--. 1 root root   18685 Oct 12 13:39 nginx-mod-http-xslt-filter-1.20.1-24.el9.x86_64.rpm
+-rw-r--r--. 1 root root   54273 Oct 12 13:39 nginx-mod-mail-1.20.1-24.el9.x86_64.rpm
+-rw-r--r--. 1 root root   80837 Oct 12 13:39 nginx-mod-stream-1.20.1-24.el9.x86_64.rpm
+````
+
+Устанавливаем полученные пакеты локально на систему:
+
+```bash
+[root@localhost x86_64]# yum localinstall *.rpm
+```
+
+После установки пакетов в конфиге nginx включаем опцию "brotli on" и проверяем конфиг:
+
+```bash
+ server {
+        listen       80;
+        listen       [::]:80;
+        server_name  _;
+        root         /usr/share/nginx/html;
+        brotli on;
+```
+
+````bash
+[root@localhost x86_64]# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+````
+
+* Запускаем nginx:
+
+````bash
+Complete!
+[root@localhost x86_64]# systemctl start nginx
+[root@localhost x86_64]# systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; preset: disabled)
+     Active: active (running) since Sun 2025-10-12 13:44:33 MSK; 3s ago
+    Process: 38832 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+    Process: 38833 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+    Process: 38834 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+   Main PID: 38835 (nginx)
+      Tasks: 5 (limit: 22776)
+     Memory: 7.2M (peak: 7.8M)
+        CPU: 88ms
+     CGroup: /system.slice/nginx.service
+             ├─38835 "nginx: master process /usr/sbin/nginx"
+             ├─38836 "nginx: worker process"
+             ├─38837 "nginx: worker process"
+             ├─38838 "nginx: worker process"
+             └─38839 "nginx: worker process"
+
+Oct 12 13:44:32 localhost.localdomain systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Oct 12 13:44:33 localhost.localdomain nginx[38833]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Oct 12 13:44:33 localhost.localdomain nginx[38833]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Oct 12 13:44:33 localhost.localdomain systemd[1]: Started The nginx HTTP and reverse proxy server.
+
+````
+
+* Заходим на страницу и видим, что Nginx успешно запустился и отдает страницы:
+  
+![nginx](/Lab06_RPM_Repo/pics/Nginx.PNG)
 
