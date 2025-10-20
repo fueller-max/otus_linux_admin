@@ -1,8 +1,91 @@
+# Развертывание веб приложения
+
+## Цель
+
+Получить практические навыки в настройке инфраструктуры с помощью манифестов и конфигураций
 
 
+### Задание
+
+Собрать стенд:
+
+nginx + python (flask) + php-fpm (wordpress) + js (react)
+
+### Решение
 
 
-Install uwsgi
+Схема: локальный nginx  + 3 веб-приложения в контейнере.
+
+#### 1. python (flask) 
+
+Подход UWSGI.
+
+* Пишем простой скрипт на python app.py используя фреймворк Flask. Также, для небольшого усложнения используем базу Redis для хранения числа - счетк входа на стриницу.
+
+app.py: 
+
+``` python
+import time
+import redis
+from flask import Flask, render_template
+
+app = Flask(__name__)
+
+redis_host = '127.0.1.1'
+
+cache = redis.Redis(host=redis_host, port=6379)
+
+def get_hit_count():
+    retries = 5
+    while True:
+        try:
+            return cache.incr('hits')
+        except redis.exceptions.ConnectionError as exc:
+            if retries == 0:
+                raise exc
+            retries -= 1
+            time.sleep(0.5)
+            
+
+
+@app.route('/')
+def hello():
+    count = get_hit_count()
+    # Render the index.html template and pass the 'count' variable to it
+    return render_template('index.html', count=count)   
+```
+
+* Пишем простой html шаблон, который будет рендерится и отдаваться клиенту при запросе страницы:
+
+
+``` html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Page</title>
+</head>
+<body>
+    <h1>Hello!</h1>
+    <p>This page was dynamically rendered by Flask using the Jinja template engine and uWSGI!</p>
+    <p>This page have been hit {{ count }} times</p>
+</body>
+</html> 
+```
+
+* Docker compose для поднятия базы Redis: 
+
+```bash
+version: '3.8'
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+```
+
+
+* Устанавливаем uwsgi, необходимую для взиамодействия в рамках UWSGI
+
 
 ```bash
    master@dynweb:~/DYNWEB/python$ sudo apt-get install build-essential python3-dev
@@ -14,10 +97,224 @@ Install uwsgi
 
 ```
 
+* Пишем ini файл 
+
+```bash
+[uwsgi]
+wsgi-file = /home/master/DYNWEB/python1/app.py
+
+# Define the callable Flask application object
+callable = app
+
+# Using a Unix socket for communication with Nginx
+socket = /tmp/uWSGI_flaskapp.sock  
+chmod-socket = 666
+
+#Used for DEBUG
+#http-socket = :3031
+
+# Add best-practice settings for production
+master = true
+processes = 4
+vacuum = true
+die-on-term = true
+```
+
+* Запускаем uwsgi
+
 ```bash
 uwsgi --ini app.ini
-
 ```
+
+* Конфигурация Nginx:
+
+```bash
+# port 8081 Flask app using uWSGI
+	server {
+         listen 8081;
+         server_name localhost;
+
+	 # Pass all requests to uWSGI
+         location / {
+               include uwsgi_params;                       # Include standard uWSGI parameters
+               uwsgi_pass unix:///tmp/uWSGI_flaskapp.sock; # Path to  uWSGI Unix socket
+         }
+	
+	}
+```
+
+* Отображаение страницы на порту 8081
+
+![uwsgi](/Lab27_WEB/pics/uWSGI_8081.jpg)
+
+
+#### 2. php-fpm (wordpress)
+
+Подход Fast CGI
+
+* Docker compose для развертывания MySQL + WordPress:
+
+```bash
+services:
+  db:
+    # Use a mariadb image which supports both amd64 & arm64 architecture
+    image: mariadb:10.6.4-focal
+    command: '--default-authentication-plugin=mysql_native_password'
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=somewordpress
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=wordpress
+      - MYSQL_PASSWORD=wordpress
+    expose:
+      - 3306
+      - 33060
+
+  wordpress:
+    image: wordpress:6.1.1-fpm-alpine
+    container_name: wordpress
+    restart: unless-stopped
+    volumes:
+      - /var/www/html:/var/www/html
+    environment:
+      - WORDPRESS_DB_HOST=db
+      - WORDPRESS_DB_USER=wordpress
+      - WORDPRESS_DB_PASSWORD=wordpress
+      - WORDPRESS_DB_NAME=wordpress
+    ports:
+      - 9000:9000
+    depends_on:
+      - db
+volumes:
+  db_data:
+```
+* Конфигурация Nginx: 
+
+```bash
+# port 8082 Wordress using FastCGI
+	
+	server {
+
+	 listen 8082;
+	 server_name localhost;
+	
+         root /var/www/html;
+         index index.php index.html index.htm;
+
+	 location / {
+	        try_files $uri $uri/ /index.php?$args;
+	   }
+         
+	 location ~ \.php$ {
+	        include fastcgi_params;
+		fastcgi_pass localhost:9000;
+	        fastcgi_index index.php;
+		fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+	   }
+	}
+```
+
+* Отображаение страницы на порту 8082
+
+![fast_cgi](/Lab27_WEB/pics/FastCGI_8082.jpg)
+
+
+
+#### 3. js (react)
+
+Подход Proxy pass
+
+* Пищем простой сервер на js
+
+``` js
+    const express = require('express');
+    const app = express();
+    const port = 3000;
+
+    app.get('/', (req, res) => {
+      res.send('Hello from Node.js Server!');
+    });
+
+    app.listen(port, () => {
+      console.log(`Server listening on port ${port}`);
+    });
+```
+
+``` json
+   {
+      "name": "my-node-app",
+      "version": "1.0.0",
+      "description": "A basic Node.js app",
+      "main": "server.js",
+      "scripts": {
+        "start": "node server.js"
+      },
+      "dependencies": {
+        "express": "^4.18.2"
+      }
+    }
+```
+* Docker 
+
+``` dockerfile
+   FROM node:18-alpine
+   WORKDIR /app
+   COPY package*.json ./
+   RUN npm install
+   COPY . .
+   EXPOSE 3000
+   CMD ["npm", "start"]
+```
+
+``` docker-compose
+    version: '3.8'
+    services:
+      web:
+        build: .
+        ports:
+          - "3000:3000"
+        volumes:
+          - .:/app
+          - /app/node_modules
+```
+
+* Конфигурация Nginx: 
+
+``` bash
+ # port 8083 Node js using proxy pass
+	server {
+         listen 8083;
+         server_name localhost;
+     
+	 location / {
+               proxy_pass http://127.0.1.0:3000; 
+               proxy_http_version 1.1;
+               proxy_set_header Upgrade $http_upgrade;
+               proxy_set_header Connection "upgrade";
+               proxy_redirect off;
+               proxy_set_header Host $host;
+               proxy_set_header X-Real-IP $remote_addr;
+               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+               proxy_set_header X-Forwarded-Host $server_name;
+           }
+       }
+```
+
+* Отображаение страницы на порту 8083
+
+![proxey](/Lab27_WEB/pics/Proxy_pass_8083.jpg)
+
+
+
+
+
+
+
+
+
+* Running Docker containers:
 
 
 ```` bash
