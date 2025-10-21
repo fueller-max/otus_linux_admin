@@ -13,12 +13,11 @@ nginx + python (flask) + php-fpm (wordpress) + js (react)
 
 ### Решение
 
+Для реализации стенда будем использовать следующую схему: локальный nginx  + 3 веб-приложения каждое из которых будем в контейнере.
 
-Схема: локальный nginx  + 3 веб-приложения в контейнере.
+#### 1. Python (Flask) 
 
-#### 1. python (flask) 
-
-Подход UWSGI.
+Для реализации работы будем использовать фреймворк Flask в сочетании с UWSGI. UWSGI - отдельный сервер, используемый в качестве слоя между web сервером (в данном случае Nginx) и приложением на python. Такое решение повышает скорость работы приложения за счет исполнения кода python на самом сервере UWSGI.
 
 * Пишем простой скрипт на python app.py используя фреймворк Flask. Также, для небольшого усложнения используем базу Redis для хранения числа - счетк входа на стриницу.
 
@@ -55,7 +54,7 @@ def hello():
     return render_template('index.html', count=count)   
 ```
 
-* Пишем простой html шаблон, который будет рендерится и отдаваться клиенту при запросе страницы:
+* Пишем простой html шаблон, который будет рендериться и отдаваться клиенту при запросе страницы:
 
 
 ``` html
@@ -72,7 +71,7 @@ def hello():
 </html> 
 ```
 
-* Docker compose для поднятия базы Redis: 
+* Для сохранения данных требуется база. Используем базу Redis, для поднятия базы используем следующий RediDocker compose: 
 
 ```bash
 version: '3.8'
@@ -84,8 +83,8 @@ services:
 ```
 
 
-* Устанавливаем uwsgi, необходимую для взиамодействия в рамках UWSGI
-
+* Устанавливаем UWSGI, предварительно установив dev-пакеты python, а также запускаем UWSGI в отдельном env для лучшей изоляции от системного python.
+ 
 
 ```bash
    master@dynweb:~/DYNWEB/python$ sudo apt-get install build-essential python3-dev
@@ -97,7 +96,7 @@ services:
 
 ```
 
-* Пишем ini файл 
+* Пишем ini файл для UWSGI, в которм описываем параметры запуска и режимы работы сервера.
 
 ```bash
 [uwsgi]
@@ -126,7 +125,7 @@ die-on-term = true
 uwsgi --ini app.ini
 ```
 
-* Конфигурация Nginx:
+* Для работы с uwsgi используем следующую конфигурация Nginx:
 
 ```bash
 # port 8081 Flask app using uWSGI
@@ -143,16 +142,19 @@ uwsgi --ini app.ini
 	}
 ```
 
+В location перенаправляем все запросы с порта 8081 на Unix- сокет uWSGI_flaskapp.sock (который описали в ini файле), который используется как пайп для связи с uwsgi сервером.
+
 * Отображаение страницы на порту 8081
 
 ![uwsgi](/Lab27_WEB/pics/uWSGI_8081.jpg)
 
+Видим, что связка front web + backend на flask +  uwsgi работает и отдается страница, на котрой также отображается счетчик числа посещений страницы.
 
 #### 2. php-fpm (wordpress)
 
-Подход Fast CGI
+Для реализации работы будем использовать подход с Fast CGI - современный протокол взаимодействия front web c бэкенд серверами. 
 
-* Docker compose для развертывания MySQL + WordPress:
+* Для разворачивания бэкенда на wordpress используем Docker compose для развертывания MySQL + WordPress:
 
 ```bash
 services:
@@ -190,11 +192,15 @@ services:
 volumes:
   db_data:
 ```
-* Конфигурация Nginx: 
+
+Важно, что образ должен поддерживать FPM - FastCGI Process Manager, который обычно запускается на 9000 порту и служит для свзяи по протколу Fast CGI. 
+
+Связь между Nginx и back end wordpress будет осуществляться через localhost:9000 
+
+* Соответствущая конфигурация Nginx для работы с Fast CGI: 
 
 ```bash
 # port 8082 Wordress using FastCGI
-	
 	server {
 
 	 listen 8082;
@@ -220,13 +226,13 @@ volumes:
 
 ![fast_cgi](/Lab27_WEB/pics/FastCGI_8082.jpg)
 
-
+Также видим, что связка web ngix + backed на wordpress работает корректно и происходит прокисрование запросов по протоколу FastCGI.
 
 #### 3. js (react)
 
-Подход Proxy pass
+Для реализации работы будем использовать подход Proxy pass - стандартное http проксирование без использования спец. протколов.
 
-* Пищем простой сервер на js
+* Пишем простой сервер на js
 
 ``` js
     const express = require('express');
@@ -241,6 +247,7 @@ volumes:
       console.log(`Server listening on port ${port}`);
     });
 ```
+* Файл package.json
 
 ``` json
    {
@@ -256,7 +263,7 @@ volumes:
       }
     }
 ```
-* Docker 
+* Docker файл для запуска сервера. Сервер запуститься в контейнере и будет слушать на порту 3000. 
 
 ``` dockerfile
    FROM node:18-alpine
@@ -267,6 +274,8 @@ volumes:
    EXPOSE 3000
    CMD ["npm", "start"]
 ```
+
+* Docker - compose для запуска сервиса на базе контейнера и пробросом порта 3000 на хост.
 
 ``` docker-compose
     version: '3.8'
@@ -306,6 +315,7 @@ volumes:
 
 ![proxey](/Lab27_WEB/pics/Proxy_pass_8083.jpg)
 
+Видим, что также связка связка web ngix + backed на js с использованием proxy_pass работает корректно.
 
 
 
@@ -313,8 +323,7 @@ volumes:
 
 
 
-
-* Running Docker containers:
+* Список всех running Docker containers:
 
 
 ```` bash
@@ -327,3 +336,5 @@ df0786a82404   redis:alpine                 "docker-entrypoint.s…"   22 hours 
 master@dynweb:~/DYNWEB/nodejs$
 
 ````
+
+Все кронфигруационные файлы доступны в директории лабораторной работы.
