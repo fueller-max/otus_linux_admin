@@ -2,7 +2,7 @@
 
 ## Цель
 
-Поработать с реаликацией MySQL
+Поработать с репликацией MySQL
 
 ### Задание
 
@@ -19,9 +19,9 @@
 ### Решение
 
 
-### 1. Настройка MySQL - Master
+#### 1. Настройка MySQL - Master
 
-* Сразу добавим правило в Firewalld для возможности подключения к базе данных через порт 3306:
+* Сразу добавим правило в Firewalld для возможности подключения к базе данных через  стандартный для MySQL порт 3306:
 
 ```bash
 [master@mysqlmaster dump]$ sudo firewall-cmd --zone=public --add-port=3306/tcp
@@ -42,7 +42,7 @@ percona-release setup ps57
 yum install Percona-Server-server-57
 ```
 
-* Копируем фалы конфигурации в директорию /etc/my.cnf.d/.
+* Копируем файлы конфигурации в директорию /etc/my.cnf.d/.
 
 ```bash
 [root@mysqlmaster /]# ll  /etc/my.cnf.d/
@@ -55,7 +55,7 @@ total 24
 -rw-r--r--. 1 root root 168 Oct 23 14:02 charset.cnf
 ```
 
-* Запускаем mysql
+* Запускаем сервис mysql
 
 ```bash
 [root@mysqlmaster master]# systemctl start mysql
@@ -103,7 +103,7 @@ mysql> SHOW VARIABLES LIKE 'gtid_mode';
 1 row in set (1.69 sec)
 ```
 
-* Берем предоставленный дамп (bet.dmp) и загружаем в нашу базу данных, предварительно создав ее:
+* Берем предоставленный дамп (bet.dmp) и загружаем в нашу базу данных на мастере, предварительно создав ее:
 
 ```bash
 [master@mysqlmaster dump]$ mysql -uroot -p'PerconaStrongPassword_1'
@@ -233,7 +233,7 @@ replicate-ignore-table=bet.events_on_demand
 replicate-ignore-table=bet.v_same_event
 ```
 
-* Копируем себе сделанные дамп с мастера 
+* Копируем себе сделанный дамп с мастера 
 
 ```bash
 [root@mysqlslave dump]# scp master@192.168.20.226:/home/master/database/dump/master.sql /home/master/database/dump/
@@ -279,7 +279,7 @@ mysql> SHOW TABLES;
 5 rows in set (0.00 sec)
 ```
 
-На данном моменте все готово, чтобы запустить репликацию 
+* На данном моменте все готово, чтобы запустить репликацию:
 
 ```bash
 mysql> CHANGE MASTER TO MASTER_HOST = "192.168.20.226", MASTER_PORT = 3306, MASTER_USER = "repl", MASTER_PASSWORD = "!OtusLinux2018", MASTER_AUTO_POSITION = 1;
@@ -291,15 +291,87 @@ mysql> SHOW SLAVE STATUS\G
                   Master_User: repl
                   Master_Port: 3306
                 Connect_Retry: 60
-              Master_Log_File: mysql-bin.000002
-          Read_Master_Log_Pos: 119568
-               Relay_Log_File: mysqlslave-relay-bin.000002
-                Relay_Log_Pos: 627
-        Relay_Master_Log_File: mysql-bin.000002
+              Master_Log_File: mysql-bin.000003
+          Read_Master_Log_Pos: 786
+               Relay_Log_File: mysqlslave-relay-bin.000020
+                Relay_Log_Pos: 750
+        Relay_Master_Log_File: mysql-bin.000003
              Slave_IO_Running: Yes
-            Slave_SQL_Running: No
-
-
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table: bet.events_on_demand,bet.v_same_event
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 786
+              Relay_Log_Space: 1262
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 1
+                  Master_UUID: c1ff3d48-b022-11f0-b81f-000c29230a35
+             Master_Info_File: /var/lib/mysql/master.info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set: c1ff3d48-b022-11f0-b81f-000c29230a35:1-41
+            Executed_Gtid_Set: 15a4dc68-b02b-11f0-abf4-000c290c959e:1-5,
+c1ff3d48-b022-11f0-b81f-000c29230a35:1-41
+                Auto_Position: 1
+         Replicate_Rewrite_DB:
+                 Channel_Name:
+           Master_TLS_Version:
+1 row in set (0.00 sec)
 ```
 
+Видим, что репликация запустилась без ошибок и активна.
+
+* Проверка работы репликации
+
+Вставляем пару записей в таблицу bookmaker на мастере
+
+```bash
+mysql> INSERT INTO bookmaker (id,bookmaker_name) VALUES(1,'1xbet');
+mysql> INSERT INTO bookmaker (id,bookmaker_name) VALUES(2,'2xbet');
+```
+
+Идем на слейв и проверяем, что данные также появлись в таблице.
+```bash
+mysql> SELECT * FROM bookmaker;
++----+----------------+
+| id | bookmaker_name |
++----+----------------+
+|  1 | 1xbet          |
+|  2 | 2xbet          |
+|  4 | betway         |
+|  5 | bwin           |
+|  6 | ladbrokes      |
+|  3 | unibet         |
++----+----------------+
+6 rows in set (0.00 sec)
+```
+Таким образом была настроена репликация данных с мастера на слейв. Проверена синхронизация данных.
 
