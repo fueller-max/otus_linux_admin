@@ -7,7 +7,7 @@
 ### Задание
 
 1. Настроить hot_standby репликацию с использованием слотов
-2. Настроить правильное резервное копирование
+2. Настроить резервное копирование с использованием Barman
 
 ### Решение
 
@@ -119,3 +119,107 @@ postgres-# \l
 
 ```
 
+#### 2. Настройка резервного копирование с использованием Barman
+
+```bash
+master@node1:~$ sudo apt install barman-cli
+```
+
+
+```bash
+master@barman:~$ sudo apt install barman-cli barman postgresql
+```
+
+```bash
+barman@barman:/home/barman$ ssh-keygen -t rsa -b 4096
+Generating public/private rsa key pair.
+Enter file in which to save the key (/var/lib/barman/.ssh/id_rsa):
+/var/lib/barman/.ssh/id_rsa already exists.
+Overwrite (y/n)? y
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /var/lib/barman/.ssh/id_rsa
+Your public key has been saved in /var/lib/barman/.ssh/id_rsa.pub
+```
+
+```bash
+postgres@node1:/home/master$ ssh-keygen -t rsa -b 4096
+Generating public/private rsa key pair.
+Enter file in which to save the key (/var/lib/postgresql/.ssh/id_rsa):
+Created directory '/var/lib/postgresql/.ssh'.
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /var/lib/postgresql/.ssh/id_rsa
+Your public key has been saved in /var/lib/postgresql/.ssh/id_rsa.pub
+```
+
+```bash
+postgres@node1:~/.ssh$ ssh barman@192.168.20.230
+barman@barman:~$
+
+barman@barman:/home/barman$ ssh postgres@192.168.20.228
+postgres@node1:~$ exit
+
+```
+
+
+
+
+```bash
+master@node1:/$ sudo -u postgres psql
+
+postgres=# CREATE USER barman WITH REPLICATION Encrypted PASSWORD 'Otus2022!';
+CREATE ROLE
+```
+
+
+
+
+```bash
+master@node1:/$ sudo cat /etc/postgresql/18/main/pg_hba.conf
+
+host    all             barman         192.168.20.230/32        scram-sha-256
+host    replication     barman         192.168.20.230/32        scram-sha-256
+
+master@node1:/$ systemctl restart postgresql
+```
+
+
+```bash
+master@node1:/$ sudo -u postgres psql
+
+postgres=# CREATE DATABASE otus;
+CREATE DATABASE
+postgres=# CREATE TABLE test (id int, name varchar(30));
+CREATE TABLE                                  ^
+postgres=# INSERT INTO test VALUES (1,' alex');
+INSERT 0 1
+```
+
+
+```bash
+barman@barman:~$ touch ~/.pgpass
+
+192.168.20.228:5432:*:barman:Otus2022!
+
+barman@barman:~$ chmod 600 ~/.pgpass
+```
+
+```bash
+barman@barman:~$ psql -h 192.168.20.228 -U barman -d postgres
+psql (16.10 (Ubuntu 16.10-0ubuntu0.24.04.1), server 18.0 (Ubuntu 18.0-1.pgdg24.04+3))
+WARNING: psql major version 16, server major version 18.
+         Some psql features might not work.
+SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off)
+Type "help" for help.
+postgres=>
+```
+
+```bash
+barman@barman:~$ psql -h 192.168.20.228 -U barman -c "IDENTIFY_SYSTEM" replication=1
+      systemid       | timeline |  xlogpos  | dbname
+---------------------+----------+-----------+--------
+ 7566314089526366895 |        1 | 0/789C1B0 |
+(1 row)
+
+```
