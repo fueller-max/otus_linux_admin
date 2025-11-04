@@ -172,7 +172,7 @@ postgres-# \l
 master@node1:~$ sudo apt install barman-cli
 ```
 
-* На хосте barman выполняем устанавливаем barman-cli, barman и  postgresq:
+* На хосте barman выполняем устанавливаем barman-cli, barman и postgresql-18:
 
 ```bash
 master@barman:~$ sudo apt install barman-cli barman
@@ -210,7 +210,7 @@ Your identification has been saved in /var/lib/postgresql/.ssh/id_rsa
 Your public key has been saved in /var/lib/postgresql/.ssh/id_rsa.pub
 ```
 
-* Проверяе доступ по ssh с обоих хостов:
+* Проверяем доступ по ssh с обоих хостов:
 
 ```bash
 postgres@node1:~/.ssh$ ssh barman@192.168.20.230
@@ -487,8 +487,362 @@ postgres=# \l
 
 #### 3. Автоматизация процессов
 
-Выполним автоматизацию процессов
+Выполним автоматизацию вышенастроенныйх процессов с использованием ansible. Настройку выполним на трех отдельных хостах. 
 
+Для настройки реплиакции создадим две роли ansible:  install_postgress и postgres_replication 
+
+<details>
+  <summary><b>install_postgress main.yaml</summary>
+
+```bash
+  #SPDX-License-Identifier: MIT-0
+---
+# tasks file for install_postgres
+
+#Install PostgreSQL 18
+ 
+- name: Update apt cache
+  ansible.builtin.apt:
+      update_cache: yes
+      cache_valid_time: 3600
+
+- name: Install required packages for apt repository management
+  ansible.builtin.apt:
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+      state: present
+
+- name: Add PostgreSQL GPG key
+  ansible.builtin.apt_key:
+      url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+      state: present
+
+- name: Add PostgreSQL 18 repository
+  ansible.builtin.apt_repository:
+      repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+      state: present
+      filename: pgdg
+
+- name: Install PostgreSQL 18 server and client
+  ansible.builtin.apt:
+      name:
+        - postgresql-18
+        - postgresql-client-18
+        - postgresql-contrib-18
+      state: present
+
+- name: Ensure PostgreSQL service is running and enabled
+  ansible.builtin.service:
+      name: postgresql
+      state: started
+      enabled: yes
+
+```
+</details>
+
+<details>
+  <summary><b>postgres_replication main.yaml</summary>
+
+```bash
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for postgres_replication
+- name: install Python tools 
+  apt: 
+    name: 
+     - python3-pip
+     - python3-dev
+     - libpq-dev  
+    state: present 
+    update_cache: true
+  
+# Setup of node1
+
+- name: Copy postgresql.conf to node1
+  template: 
+    src: postgresql.conf.j2 
+    dest: /etc/postgresql/18/main/postgresql.conf 
+    owner: postgres
+    group: postgres 
+    mode: '0600' 
+  when: (ansible_hostname == "node1")
+
+- name: copy pg_hba.conf to node1 
+  template: 
+    src: pg_hba.conf.j2 
+    dest: /etc/postgresql/18/main/pg_hba.conf 
+    owner: postgres 
+    group: postgres 
+    mode: '0600' 
+  when: (ansible_hostname == "node1")
+
+- name: Restart postgresql-server on node1 
+  service: 
+    name: postgresql 
+    state: restarted 
+  when: (ansible_hostname == "node1")   
+
+- name: Create PostgreSQL user replicator on node1 (master) # setfacl must be present on the remote host!
+  become: true
+  become_user: postgres
+  postgresql_user: 
+    name: replicator 
+    password: '{{ replicator_password }}' 
+    role_attr_flags: REPLICATION 
+  when: (ansible_hostname == "node1")
+
+# --- End of node 1 setup           ----
+
+# --- Setup of node2                ----
+
+- name: Stop postgresql-server on node2 
+  service: 
+     name: postgresql 
+     state: stopped 
+  when: (ansible_hostname == "node2")
+
+- name: Remove files from data catalog 
+  file: 
+    path: /var/lib/postgresql/18/main/ 
+    state: absent 
+  when: (ansible_hostname == "node2")
+
+- name: Copy files from master to slave 
+  expect: 
+    command: 'pg_basebackup -h {{ master_ip }} -U replicator -p 5432 -D /var/lib/postgresql/18/main/ -R -P' 
+    responses: 
+      Password: "{{ replicator_password }}" 
+  when: (ansible_hostname == "node2")
+
+- name: Recursively set ownership of /var/lib/postgresql/18/main/
+  ansible.builtin.file:
+        path: /var/lib/postgresql/18/main/
+        state: directory
+        recurse: yes
+        owner: postgres
+        group: postgres  
+  when: (ansible_hostname == "node2")      
+
+- name: Copy postgresql.conf to node2
+  template: 
+    src: postgresql.conf.j2 
+    dest: /etc/postgresql/18/main/postgresql.conf 
+    owner: postgres
+    group: postgres 
+    mode: '0600' 
+  when: (ansible_hostname == "node2")
+
+- name: copy pg_hba.conf to node2 
+  template: 
+    src: pg_hba.conf.j2 
+    dest: /etc/postgresql/18/main/pg_hba.conf 
+    owner: postgres 
+    group: postgres 
+    mode: '0600' 
+  when: (ansible_hostname == "node2")
+
+- name: Start postgresql-server on node2 
+  service: 
+    name: postgresql 
+    state: started 
+  when: (ansible_hostname == "node2")  
+
+# --- end of node 2 setup           ----
+```
+</details>
+
+Для настройки Barman создадим роль install barman:
+
+<details>
+  <summary><b>install barman main.yaml</summary>
+
+```bash
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for install_barman
+
+- name: Install barman-cli packages on node1
+  apt: 
+    name: 
+      - barman-cli 
+    state: present 
+    update_cache: true 
+  when: (ansible_hostname != "barman")
+
+- name: Install barman and barman-cli packages on barman
+  apt: 
+    name: 
+      - barman 
+      - barman-cli 
+    state: present 
+    update_cache: true 
+  when: (ansible_hostname == "barman")
+
+
+# --- Setup SSH infrustruture   ------
+
+- name: Generate SSH key for postgres 
+  user: 
+    name: postgres 
+    generate_ssh_key: yes 
+    ssh_key_type: rsa 
+    ssh_key_bits: 4096 
+    force: no 
+  when: (ansible_hostname == "node1")
+
+- name: Generate SSH key for barman 
+  user: 
+    name: barman 
+    uid: 994 
+    shell: /bin/bash 
+    generate_ssh_key: yes 
+    ssh_key_type: rsa 
+    ssh_key_bits: 4096 
+    force: no 
+  when: (ansible_hostname == "barman")
+
+   # --- node1 -> barman   ----
+
+- name: Get public key from node1 
+  shell: cat /var/lib/postgresql/.ssh/id_rsa.pub 
+  register: ssh_keys
+  when: (ansible_hostname == "node1")
+
+- name: Transfer public key to barman 
+  delegate_to: barman 
+  authorized_key: 
+    key: "{{ ssh_keys.stdout }}"
+    comment: "{{ansible_hostname}}" 
+    user: barman 
+  when: (ansible_hostname == "node1")   
+
+   # ---   end   ----
+  
+   # --- barman -> node1   ----
+
+- name: Fetch all public ssh keys from barman 
+  shell: cat /var/lib/barman/.ssh/id_rsa.pub 
+  register: ssh_keys 
+  when: (ansible_hostname == "barman")
+
+- name: Transfer public key to barman 
+  delegate_to: node1
+  authorized_key:
+     key: "{{ ssh_keys.stdout }}" 
+     comment: "{{ansible_hostname}}" 
+     user: postgres 
+  when: (ansible_hostname == "barman")
+
+   # ---   end   ----
+
+# ----     END SSH              ------  
+
+- name: Create barman user on node 1
+  become: true
+  become_user: postgres 
+  postgresql_user: 
+    name: barman 
+    password: '{{ barman_user_password }}' 
+    role_attr_flags: SUPERUSER 
+  when: (ansible_hostname == "node1")
+
+- name: Add permission for barman in pg_hba.conf 
+  lineinfile: 
+    path: /etc/postgresql/18/main/pg_hba.conf 
+    line: 'host all {{ barman_user }} {{ barman_ip }}/32 scram-sha-256'
+  when: (ansible_hostname == "node1")
+
+- name: Add permission for barman in pg_hba.conf 
+  lineinfile: 
+     path: /etc/postgresql/18/main/pg_hba.conf 
+     line: 'host replication {{ barman_user }} {{ barman_ip }}/32 scram-sha-256'
+  when: (ansible_hostname == "node1")
+
+- name: Restart postgresql-server on node1 
+  service: 
+    name: postgresql 
+    state: restarted 
+  when: (ansible_hostname == "node1")  
+
+- name: Copy .pgpass to barman 
+  template: 
+    src: .pgpass.j2 
+    dest: /var/lib/barman/.pgpass 
+    owner: barman 
+    group: barman 
+    mode: '0600' 
+  when: (ansible_hostname == "barman")
+
+- name: Copy barman.conf to barman
+  template: 
+    src: barman.conf.j2 
+    dest: /etc/barman.conf 
+    owner: barman 
+    group: barman 
+    mode: '0755' 
+  when: (ansible_hostname == "barman") 
+
+- name: Copy node1.conf to barman
+  template: 
+     src: node1.conf.j2 
+     dest: /etc/barman.d/node1.conf 
+     owner: barman 
+     group: barman 
+     mode: '0755' 
+  when: (ansible_hostname == "barman") 
+
+- name: Barman switch-wal node1 
+  become_user: barman 
+  shell: barman switch-wal node1 
+  when: (ansible_hostname == "barman")  
+
+- name: Barman cron 
+  become_user: barman 
+  shell: barman cron 
+  when: (ansible_hostname == "barman")    
+```
+</details>
+
+
+Основной playbook:
+
+<details>
+  <summary><b>provision.yaml </summary>
+ 
+ ```bash
+- name: PostgreSQL infrastructure setup
+  hosts: all 
+  become: yes 
+  tasks:
+
+- name: Install postgres 18 and setup replication on node1,2
+  hosts: node1,node2 
+  become: yes 
+  roles: 
+    - install_postgres 
+    - postgres_replication
+
+- name: Install postgres 18 on barman host
+  hosts: barman 
+  become: yes 
+  roles: 
+    - install_postgres    
+
+- name: Setup backup using Barman 
+  hosts: node1,barman 
+  become: yes 
+  roles:
+    - install_barman 
+ ```
+</details>
+
+
+Все сопутсвующие файлы (конфиги, темплейты) представлены в соответствующих директориях основной директории "ansible".
+
+После прогона плейбука проверяем работу репликации:
 
 ```bash
 postgres=# select * from pg_stat_replication;
@@ -506,5 +860,38 @@ ceipt_time     | latest_end_lsn |       latest_end_time       | slot_name |  sen
 (1 row)
 ```
 
+Видим, что репликация запустилась успешно. 
 
 
+Далее проверяем работу бекапов с использованием Barman:
+
+```bash
+barman@barman:/home/master$ barman check node
+Server node1:
+        PostgreSQL: OK
+        superuser or standard user with backup privileges: OK
+        PostgreSQL streaming: OK
+        wal_level: OK
+        replication slot: OK
+        directories: OK
+        retention policy settings: OK
+2025-11-04 08:13:09,090 [13709] barman.server ERROR: Check 'backup maximum age' failed for server 'node1'
+        backup maximum age: FAILED (interval provided: 4 days, latest backup age: No available backups)
+        backup minimum size: OK (0 B)
+        wal maximum age: OK (no last_wal_maximum_age provided)
+        wal size: OK (0 B)
+        compression settings: OK
+        failed backups: OK (there are 0 failed backups)
+2025-11-04 08:13:09,090 [13709] barman.server ERROR: Check 'minimum redundancy requirements' failed for server 'node1'
+        minimum redundancy requirements: FAILED (have 0 non-incremental backups, expected at least 1)
+        pg_basebackup: OK
+        pg_basebackup compatible: OK
+        pg_basebackup supports tablespaces mapping: OK
+        systemid coherence: OK (no system Id stored on disk)
+        pg_receivexlog: OK
+        pg_receivexlog compatible: OK
+        receive-wal running: OK
+        archiver errors: OK
+```
+
+Также видим, что бекап-хост Barman успешно подключился к ноде1.

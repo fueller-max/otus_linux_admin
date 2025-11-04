@@ -1,0 +1,23 @@
+- name: PostgreSQL infrastructure setup
+  hosts: all 
+  become: yes 
+  tasks:
+
+- name: Install postgres 18 and setup replication on node1,2
+  hosts: node1,node2 
+  become: yes 
+  roles: 
+    - install_postgres 
+    - postgres_replication
+
+- name: Install postgres 18 on barman host
+  hosts: barman 
+  become: yes 
+  roles: 
+    - install_postgres    
+
+- name: Setup backup using Barman 
+  hosts: node1,barman 
+  become: yes 
+  roles:
+    - install_barman

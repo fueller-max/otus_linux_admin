@@ -1,0 +1,44 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for install_postgres
+
+#Install PostgreSQL 18
+ 
+- name: Update apt cache
+  ansible.builtin.apt:
+      update_cache: yes
+      cache_valid_time: 3600
+
+- name: Install required packages for apt repository management
+  ansible.builtin.apt:
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+      state: present
+
+- name: Add PostgreSQL GPG key
+  ansible.builtin.apt_key:
+      url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+      state: present
+
+- name: Add PostgreSQL 18 repository
+  ansible.builtin.apt_repository:
+      repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+      state: present
+      filename: pgdg
+
+- name: Install PostgreSQL 18 server and client
+  ansible.builtin.apt:
+      name:
+        - postgresql-18
+        - postgresql-client-18
+        - postgresql-contrib-18
+      state: present
+
+- name: Ensure PostgreSQL service is running and enabled
+  ansible.builtin.service:
+      name: postgresql
+      state: started
+      enabled: yes
