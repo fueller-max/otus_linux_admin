@@ -15,7 +15,7 @@
 
 #### 1. Настройка hot_standby репликации с использованием слотов
 
-На машинах node1 и node2 устанавливаем postgresql-server актуальной (18) на данный момент версии:
+* На машинах node1 и node2 устанавливаем postgresql-server актуальной (18) на данный момент версии:
 
 
 ```bash
@@ -94,7 +94,7 @@ master@node2:~$ pg_basebackup -h 192.168.20.228 -U replicator -D /var/lib/postgr
 Password:
 23656/23656 kB (100%), 1/1 tablespace
 ```
-Важно, директория /var/lib/postgresql/18/main должна быть пустой перед выполнением процедуры. Также важно следить за правами пользовтеля/группы для данных директорий/файлов.
+Важно, директория /var/lib/postgresql/18/main должна быть пустой перед выполнением процедуры. Также важно следить за правами пользователя/группы для данных директорий/файлов.
 
 * Запускаем postgresql
 
@@ -163,8 +163,8 @@ postgres-# \l
 4. Starting from PostgreSQL 9.2, you can add a streaming replication connection that is used for WAL streaming and significantly reduce RPO. This more robust implementation is depicted in figure</mark>
 
 <br>
-
-
+<br>
+<br>
 
 * На хостах node1 и node2 установливаем утилиту barman-cli:
 
@@ -444,7 +444,7 @@ postgres=# \l
 ```
 
 
-* Запускаем восстановлание из бекапа:
+* Запускаем восстановление из бекапа:
 
 ```bash
 barman@barman:/home/master$ barman recover node1 20251103T102811 /var/lib/postgresql/18/main/ --remote-ssh-comman "ssh postgres@192.168.20.228"
@@ -487,7 +487,7 @@ postgres=# \l
 
 #### 3. Автоматизация процессов
 
-Выполним автоматизацию вышенастроенныйх процессов с использованием ansible. Настройку выполним на трех отдельных хостах. 
+Выполним автоматизацию настроенных процессов выше с использованием ansible. Настройку выполним на трех отдельных "свежих" остах.
 
 Для настройки реплиакции создадим две роли ansible:  install_postgress и postgres_replication 
 
@@ -840,7 +840,7 @@ postgres=# \l
 </details>
 
 
-Все сопутсвующие файлы (конфиги, темплейты) представлены в соответствующих директориях основной директории "ansible".
+Все сопутствующие файлы (конфиги, темплейты) представлены в соответствующих директориях основной директории "ansible".
 
 После прогона плейбука проверяем работу репликации:
 
